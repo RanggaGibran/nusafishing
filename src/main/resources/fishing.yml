@@ -1,0 +1,723 @@
+# NusaFishing Configuration
+# Konfigurasi untuk alat pancing, umpan, dan ikan-ikan
+
+# Pengaturan alat pancing
+fishing_rods:
+  basic_rod:
+    name: "Pancingan Bambu"
+    description: "Pancingan sederhana dari bambu"
+    custom_model_data: 1001
+    durability: 50
+    stamina_modifier: 1.0
+    tier: BASIC
+    special_ability: false
+    price: 1500  # Dari 500 → 1,500 (3x lipat)
+    lure_level: 1
+    max_weight_capacity: 25.0
+    
+  intermediate_rod:
+    name: "Pancingan Fiber"
+    description: "Pancingan modern dengan stamina yang lebih baik"
+    custom_model_data: 1002
+    durability: 150
+    stamina_modifier: 0.7
+    tier: INTERMEDIATE
+    special_ability: false
+    price: 7500  # Dari 2,000 → 7,500 (3.75x lipat)
+    lure_level: 2
+    max_weight_capacity: 100.0
+    
+  advanced_rod:
+    name: "Pancingan Carbon"
+    description: "Pancingan profesional dengan performa terbaik"
+    custom_model_data: 1003
+    durability: 300
+    stamina_modifier: 0.5
+    tier: ADVANCED
+    special_ability: true
+    ability_description: "10% kesempatan mendapat ikan tier lebih tinggi"
+    price: 25000  # Dari 5,000 → 25,000 (5x lipat)
+    lure_level: 3
+    max_weight_capacity: 500.0
+    
+  expert_rod:
+    name: "Pancingan Master"
+    description: "Pancingan hasil tempaan terbaik"
+    custom_model_data: 1004
+    durability: 500
+    stamina_modifier: 0.4
+    tier: EXPERT
+    special_ability: true
+    ability_description: "20% kesempatan double catch"
+    price: 75000  # Dari 10,000 → 75,000 (7.5x lipat)
+    lure_level: 4
+    max_weight_capacity: 2500.0
+    
+  legendary_rod:
+    name: "Pancingan Legenda Laut"
+    description: "Konon hanya nelayan legendaris yang bisa menggunakannya"
+    custom_model_data: 1005
+    durability: 1000
+    stamina_modifier: 0.3
+    tier: MASTER
+    special_ability: true
+    ability_description: "5% kesempatan mendapat ikan legendaris"
+    price: 250000  # Dari 20,000 → 250,000 (12.5x lipat)
+    lure_level: 5
+    max_weight_capacity: 10000.0
+
+# Pengaturan umpan
+fishing_baits:
+  worm:
+    name: "Cacing Tanah"
+    description: "Umpan dasar untuk ikan kecil"
+    material: WHEAT_SEEDS
+    custom_model_data: 2001
+    valid_fish: [small_carp, small_catfish, small_tilapia]
+    attraction_modifier: 3.0     # Dari 1.5 menjadi 3.0 (200% peningkatan)
+    tier_boost: 0
+    uses_per_item: 5            # Dari 3 menjadi 5 penggunaan
+    price: 10
+    quality_boost: 1.25         # Dari 1.1 menjadi 1.25 (25% boost)
+    weight_boost: 1.20          # Dari 1.05 menjadi 1.20 (20% boost)
+    
+  cricket:
+    name: "Jangkrik"
+    description: "Umpan untuk ikan sedang"
+    material: BEETROOT_SEEDS
+    custom_model_data: 2002
+    valid_fish: [carp, catfish, tilapia, small_snakehead]
+    attraction_modifier: 4.0     # Dari 1.8 menjadi 4.0 
+    tier_boost: 1               # Dari 0 menjadi 1 (chance naik tier)
+    uses_per_item: 7            # Dari 5 menjadi 7 penggunaan
+    price: 20
+    quality_boost: 1.35         # Dari 1.15 menjadi 1.35 (35% boost)
+    weight_boost: 1.30          # Dari 1.1 menjadi 1.30 (30% boost)
+    
+  small_fish:
+    name: "Ikan Kecil"
+    description: "Umpan untuk ikan predator"
+    material: TROPICAL_FISH
+    custom_model_data: 2003
+    valid_fish: [snakehead, giant_catfish, barracuda]
+    attraction_modifier: 5.0     # Dari 2.2 menjadi 5.0
+    tier_boost: 2               # Dari 1 menjadi 2 (lebih tinggi chance naik tier)
+    uses_per_item: 4            # Dari 2 menjadi 4 penggunaan
+    price: 50
+    quality_boost: 1.50         # Dari 1.2 menjadi 1.50 (50% boost)
+    weight_boost: 1.45          # Dari 1.15 menjadi 1.45 (45% boost)
+    
+  rare_bait:
+    name: "Umpan Premium"
+    description: "Umpan berkualitas tinggi untuk semua ikan"
+    material: HEART_OF_THE_SEA
+    custom_model_data: 2004
+    valid_fish: []              # Bisa menangkap semua ikan
+    attraction_modifier: 8.0     # Dari 3.0 menjadi 8.0 (drastis)
+    tier_boost: 3               # Dari 2 menjadi 3 (hampir pasti naik tier)
+    uses_per_item: 3            # Dari 1 menjadi 3 penggunaan
+    price: 100
+    quality_boost: 2.0          # Dari 1.3 menjadi 2.0 (100% boost kualitas)
+    weight_boost: 2.0           # Dari 1.25 menjadi 2.0 (100% boost berat)
+
+# Pengaturan ikan dengan tier
+fishes:
+  # Ikan tier COMMON
+  small_carp:
+    name: "Ikan Mas Kecil"
+    description: "Ikan mas berukuran kecil"
+    material: COD
+    custom_model_data: 3001
+    min_weight: 0.5
+    max_weight: 10.0  # Dinaikkan dari 0.5kg
+    min_quality: 10
+    max_quality: 80
+    base_price: 5.0
+    tier: COMMON
+    
+  small_catfish:
+    name: "Lele Kecil"
+    description: "Lele berukuran kecil"
+    material: COD
+    custom_model_data: 3002
+    min_weight: 0.5
+    max_weight: 15.0  # Dinaikkan dari 0.4kg
+    min_quality: 10
+    max_quality: 80
+    base_price: 4.0
+    tier: COMMON
+    
+  # Ikan tier UNCOMMON
+  carp:
+    name: "Ikan Mas"
+    description: "Ikan mas berukuran sedang"
+    material: SALMON
+    custom_model_data: 3101
+    min_weight: 5.0
+    max_weight: 50.0  # Dinaikkan dari 2.0kg
+    min_quality: 20
+    max_quality: 90
+    base_price: 15.0
+    tier: UNCOMMON
+  
+  # Ikan tier RARE
+  snakehead:
+    name: "Ikan Gabus"
+    description: "Ikan predator air tawar"
+    material: SALMON
+    custom_model_data: 3102
+    min_weight: 10.0
+    max_weight: 250.0  # Dinaikkan dari 3.0kg
+    min_quality: 30
+    max_quality: 90
+    base_price: 25.0
+    tier: RARE
+    
+  # Ikan tier EPIC
+  giant_catfish:
+    name: "Lele Raksasa"
+    description: "Lele yang sangat besar, sulit ditangkap"
+    material: PUFFERFISH
+    custom_model_data: 3201
+    min_weight: 100.0
+    max_weight: 1000.0  # Dinaikkan dari 20.0kg
+    min_quality: 50
+    max_quality: 100
+    base_price: 100.0
+    tier: EPIC
+    
+  # Ikan tier LEGENDARY
+  barracuda:
+    name: "Barracuda"
+    description: "Ikan predator laut yang berbahaya"
+    material: PUFFERFISH
+    custom_model_data: 3202
+    min_weight: 500.0
+    max_weight: 5000.0  # Dinaikkan dari 15.0kg
+    min_quality: 60
+    max_quality: 100
+    base_price: 120.0
+    tier: LEGENDARY
+    
+  # Tambahkan ikan legendaris baru yang sangat berat
+  giant_whale_shark:
+    name: "Hiu Paus Raksasa"
+    description: "Ikan terbesar yang pernah ditemukan di lautan"
+    material: PUFFERFISH
+    custom_model_data: 3203
+    min_weight: 1000.0
+    max_weight: 10000.0  # Hingga 10 ton!
+    min_quality: 70
+    max_quality: 100
+    base_price: 500.0
+    tier: LEGENDARY
+
+  # PREHISTORIC FISH
+  megalodon:
+    name: "Megalodon"
+    description: "Predator purba terbesar yang pernah berenang di lautan"
+    material: PUFFERFISH
+    custom_model_data: 3301
+    min_weight: 2000.0
+    max_weight: 8000.0
+    min_quality: 70
+    max_quality: 100
+    base_price: 600.0
+    tier: LEGENDARY
+    
+  dunkleosteus:
+    name: "Dunkleosteus"
+    description: "Ikan lapis baja dari zaman Devonian"
+    material: PUFFERFISH
+    custom_model_data: 3302
+    min_weight: 800.0
+    max_weight: 3000.0
+    min_quality: 60
+    max_quality: 100
+    base_price: 400.0
+    tier: EPIC
+    
+  leedsichthys:
+    name: "Leedsichthys"
+    description: "Ikan purba pemakan plankton sebesar bus"
+    material: PUFFERFISH
+    custom_model_data: 3303
+    min_weight: 1500.0
+    max_weight: 7000.0
+    min_quality: 65
+    max_quality: 100
+    base_price: 500.0
+    tier: LEGENDARY
+    
+  helicoprion:
+    name: "Helicoprion"
+    description: "Ikan hiu purba dengan gigi spiral mengerikan"
+    material: PUFFERFISH
+    custom_model_data: 3304
+    min_weight: 400.0
+    max_weight: 1000.0
+    min_quality: 50
+    max_quality: 90
+    base_price: 250.0
+    tier: EPIC
+    
+  xiphactinus:
+    name: "Xiphactinus"
+    description: "Predator buas dari lautan zaman Cretaceous"
+    material: SALMON
+    custom_model_data: 3305
+    min_weight: 300.0
+    max_weight: 800.0
+    min_quality: 45
+    max_quality: 90
+    base_price: 180.0
+    tier: EPIC
+
+  # FRESHWATER FISH
+  arapaima:
+    name: "Arapaima"
+    description: "Ikan air tawar terbesar dari sungai Amazon"
+    material: SALMON
+    custom_model_data: 3401
+    min_weight: 80.0
+    max_weight: 200.0
+    min_quality: 40
+    max_quality: 85
+    base_price: 120.0
+    tier: RARE
+    
+  sturgeon:
+    name: "Ikan Sturgeon"
+    description: "Ikan kuno penghasil kaviar terbaik"
+    material: SALMON
+    custom_model_data: 3402
+    min_weight: 100.0
+    max_weight: 500.0
+    min_quality: 45
+    max_quality: 90
+    base_price: 200.0
+    tier: RARE
+    
+  alligator_gar:
+    name: "Alligator Gar"
+    description: "Ikan purba berpenampilan seperti buaya"
+    material: SALMON
+    custom_model_data: 3403
+    min_weight: 60.0
+    max_weight: 150.0
+    min_quality: 35
+    max_quality: 80
+    base_price: 90.0
+    tier: RARE
+    
+  piranha:
+    name: "Piranha"
+    description: "Ikan pemangsa kecil dengan gigitan mematikan"
+    material: COD
+    custom_model_data: 3404
+    min_weight: 0.8
+    max_weight: 3.0
+    min_quality: 20
+    max_quality: 75
+    base_price: 15.0
+    tier: UNCOMMON
+    
+  catfish_giant:
+    name: "Lele Raksasa Mekong"
+    description: "Ikan lele terbesar di dunia"
+    material: PUFFERFISH
+    custom_model_data: 3405
+    min_weight: 150.0
+    max_weight: 350.0
+    min_quality: 45
+    max_quality: 90
+    base_price: 180.0
+    tier: EPIC
+
+  # SALTWATER FISH
+  tuna_bluefin:
+    name: "Tuna Sirip Biru"
+    description: "Ikan tercepat dan paling berharga di lautan"
+    material: SALMON
+    custom_model_data: 3501
+    min_weight: 200.0
+    max_weight: 700.0
+    min_quality: 50
+    max_quality: 95
+    base_price: 350.0
+    tier: EPIC
+    
+  marlin:
+    name: "Marlin Biru"
+    description: "Ikan pedang yang sangat kuat dan cepat"
+    material: SALMON
+    custom_model_data: 3502
+    min_weight: 150.0
+    max_weight: 800.0
+    min_quality: 55
+    max_quality: 95
+    base_price: 300.0
+    tier: EPIC
+    
+  swordfish:
+    name: "Ikan Pedang"
+    description: "Predator dengan moncong tajam seperti pedang"
+    material: SALMON
+    custom_model_data: 3503
+    min_weight: 100.0
+    max_weight: 500.0
+    min_quality: 45
+    max_quality: 90
+    base_price: 200.0
+    tier: RARE
+    
+  oarfish:
+    name: "Ikan Dayung"
+    description: "Ikan laut dalam yang sangat langka dan misterius"
+    material: SALMON
+    custom_model_data: 3504
+    min_weight: 70.0
+    max_weight: 300.0
+    min_quality: 65
+    max_quality: 95
+    base_price: 400.0
+    tier: EPIC
+    
+  manta_ray:
+    name: "Pari Manta"
+    description: "Pari raksasa yang anggun di lautan"
+    material: PUFFERFISH
+    custom_model_data: 3505
+    min_weight: 800.0
+    max_weight: 2000.0
+    min_quality: 50
+    max_quality: 90
+    base_price: 300.0
+    tier: EPIC
+
+  # STEAMPUNK FISH
+  clockwork_salmon:
+    name: "Salmon Mekanis"
+    description: "Ikan dengan gigi roda dan tubuh dari kuningan"
+    material: SALMON
+    custom_model_data: 3601
+    min_weight: 5.0
+    max_weight: 25.0
+    min_quality: 60
+    max_quality: 100
+    base_price: 250.0
+    tier: EPIC
+    
+  steam_puffer:
+    name: "Buntal Uap"
+    description: "Mengeluarkan asap saat merasa terancam"
+    material: PUFFERFISH
+    custom_model_data: 3602
+    min_weight: 2.0
+    max_weight: 15.0
+    min_quality: 55
+    max_quality: 95
+    base_price: 180.0
+    tier: RARE
+    
+  brass_barracuda:
+    name: "Barracuda Kuningan"
+    description: "Predator bertenaga boiler dengan gigi baja"
+    material: SALMON
+    custom_model_data: 3603
+    min_weight: 20.0
+    max_weight: 100.0
+    min_quality: 65
+    max_quality: 100
+    base_price: 300.0
+    tier: EPIC
+    
+  copper_carp:
+    name: "Karper Tembaga"
+    description: "Ikan hias dengan sisik berkilau seperti koin"
+    material: COD
+    custom_model_data: 3604
+    min_weight: 1.0
+    max_weight: 10.0
+    min_quality: 40
+    max_quality: 85
+    base_price: 80.0
+    tier: UNCOMMON
+    
+  iron_eel:
+    name: "Belut Besi"
+    description: "Mampu menghasilkan aliran listrik kuat"
+    material: SALMON
+    custom_model_data: 3605
+    min_weight: 8.0
+    max_weight: 30.0
+    min_quality: 50
+    max_quality: 90
+    base_price: 150.0
+    tier: RARE
+
+  # MEDIEVAL/FANTASY FISH
+  dragon_fish:
+    name: "Ikan Naga"
+    description: "Ikan langka dengan sisik layaknya naga"
+    material: PUFFERFISH
+    custom_model_data: 3701
+    min_weight: 100.0
+    max_weight: 1000.0
+    min_quality: 70
+    max_quality: 100
+    base_price: 500.0
+    tier: LEGENDARY
+    
+  royal_goldfish:
+    name: "Ikan Emas Kerajaan"
+    description: "Hanya ditemukan di kolam istana kuno"
+    material: COD
+    custom_model_data: 3702
+    min_weight: 0.5
+    max_weight: 5.0
+    min_quality: 80
+    max_quality: 100
+    base_price: 200.0
+    tier: RARE
+    
+  kraken_spawn:
+    name: "Anak Kraken"
+    description: "Bayi gurita raksasa dari legenda pelaut"
+    material: PUFFERFISH
+    custom_model_data: 3703
+    min_weight: 50.0
+    max_weight: 500.0
+    min_quality: 75
+    max_quality: 100
+    base_price: 450.0
+    tier: LEGENDARY
+    
+  enchanted_trout:
+    name: "Trout Ajaib"
+    description: "Trout dengan sisik yang berkilau seperti kristal"
+    material: SALMON
+    custom_model_data: 3704
+    min_weight: 3.0
+    max_weight: 20.0
+    min_quality: 60
+    max_quality: 95
+    base_price: 120.0
+    tier: RARE
+    
+  basilisk_eel:
+    name: "Belut Basilisk"
+    description: "Bisa membatu mangsa dengan tatapannya"
+    material: SALMON
+    custom_model_data: 3705
+    min_weight: 10.0
+    max_weight: 50.0
+    min_quality: 65
+    max_quality: 95
+    base_price: 280.0
+    tier: EPIC
+
+  # SCI-FI FISH
+  alien_angler:
+    name: "Pemancing Alien"
+    description: "Ikan dari planet lain dengan lampu bioluminesensi"
+    material: PUFFERFISH
+    custom_model_data: 3801
+    min_weight: 5.0
+    max_weight: 30.0
+    min_quality: 75
+    max_quality: 100
+    base_price: 350.0
+    tier: EPIC
+    
+  quantum_cod:
+    name: "Kod Kuantum"
+    description: "Bisa berada di beberapa lokasi sekaligus"
+    material: COD
+    custom_model_data: 3802
+    min_weight: 1.0
+    max_weight: 8.0
+    min_quality: 60
+    max_quality: 95
+    base_price: 180.0
+    tier: RARE
+    
+  galactic_ray:
+    name: "Pari Galaksi"
+    description: "Tubuhnya berisi taburan bintang dan nebula"
+    material: PUFFERFISH
+    custom_model_data: 3803
+    min_weight: 200.0
+    max_weight: 1000.0
+    min_quality: 85
+    max_quality: 100
+    base_price: 600.0
+    tier: LEGENDARY
+    
+  plasma_piranha:
+    name: "Piranha Plasma"
+    description: "Ikan dengan gigitan sedingin es namun sepanas matahari"
+    material: COD
+    custom_model_data: 3804
+    min_weight: 0.5
+    max_weight: 3.0
+    min_quality: 70
+    max_quality: 95
+    base_price: 120.0
+    tier: RARE
+    
+  android_angelfish:
+    name: "Angelfish Android"
+    description: "Perpaduan teknologi canggih dan kehidupan akuatik"
+    material: TROPICAL_FISH
+    custom_model_data: 3805
+    min_weight: 1.0
+    max_weight: 5.0
+    min_quality: 75
+    max_quality: 100
+    base_price: 200.0
+    tier: EPIC
+
+  # MYTHOLOGICAL FISH
+  poseidon_bass:
+    name: "Bass Poseidon"
+    description: "Konon adalah mata-mata dewa laut"
+    material: SALMON
+    custom_model_data: 3901
+    min_weight: 50.0
+    max_weight: 300.0
+    min_quality: 80
+    max_quality: 100
+    base_price: 400.0
+    tier: LEGENDARY
+    
+  phoenix_fish:
+    name: "Ikan Phoenix"
+    description: "Dapat hidup di air mendidih dan membangkitkan diri"
+    material: TROPICAL_FISH
+    custom_model_data: 3902
+    min_weight: 10.0
+    max_weight: 50.0
+    min_quality: 85
+    max_quality: 100
+    base_price: 450.0
+    tier: LEGENDARY
+    
+  hydra_eel:
+    name: "Belut Hydra"
+    description: "Memiliki tujuh kepala yang bisa tumbuh kembali"
+    material: PUFFERFISH
+    custom_model_data: 3903
+    min_weight: 70.0
+    max_weight: 350.0
+    min_quality: 75
+    max_quality: 100
+    base_price: 380.0
+    tier: LEGENDARY
+    
+  chimera_fish:
+    name: "Ikan Chimera"
+    description: "Perpaduan dari tiga jenis ikan berbeda"
+    material: PUFFERFISH
+    custom_model_data: 3904
+    min_weight: 30.0
+    max_weight: 150.0
+    min_quality: 70
+    max_quality: 95
+    base_price: 300.0
+    tier: EPIC
+    
+  leviathan_spawn:
+    name: "Anak Leviathan"
+    description: "Anak dari monster laut terbesar dalam mitologi"
+    material: PUFFERFISH
+    custom_model_data: 3905
+    min_weight: 1000.0
+    max_weight: 5000.0
+    min_quality: 90
+    max_quality: 100
+    base_price: 800.0
+    tier: LEGENDARY
+
+  # SPECIAL RARE FISH
+  golden_koi:
+    name: "Koi Emas"
+    description: "Dipercaya membawa keberuntungan dan kekayaan"
+    material: TROPICAL_FISH
+    custom_model_data: 4001
+    min_weight: 5.0
+    max_weight: 20.0
+    min_quality: 90
+    max_quality: 100
+    base_price: 500.0
+    tier: LEGENDARY
+    
+  rainbow_salmon:
+    name: "Salmon Pelangi"
+    description: "Ikan dengan sisik berwarna-warni seperti pelangi"
+    material: SALMON
+    custom_model_data: 4002
+    min_weight: 10.0
+    max_weight: 30.0
+    min_quality: 85
+    max_quality: 100
+    base_price: 450.0
+    tier: LEGENDARY
+    
+  ancient_guardian:
+    name: "Penjaga Kuno"
+    description: "Ikan tertua di dunia, saksi sejarah ribuan tahun"
+    material: PUFFERFISH
+    custom_model_data: 4003
+    min_weight: 500.0
+    max_weight: 2000.0
+    min_quality: 95
+    max_quality: 100
+    base_price: 1000.0
+    tier: LEGENDARY
+    
+  crystal_fish:
+    name: "Ikan Kristal"
+    description: "Tubuh transparan seperti kristal murni"
+    material: TROPICAL_FISH
+    custom_model_data: 4004
+    min_weight: 1.0
+    max_weight: 5.0
+    min_quality: 80
+    max_quality: 100
+    base_price: 300.0
+    tier: EPIC
+    
+  abyssal_horror:
+    name: "Horor Palung"
+    description: "Makhluk mengerikan dari palung terdalam"
+    material: PUFFERFISH
+    custom_model_data: 4005
+    min_weight: 300.0
+    max_weight: 1500.0
+    min_quality: 75
+    max_quality: 100
+    base_price: 700.0
+    tier: LEGENDARY
+
+# Pengaturan lokasi spesial
+special_locations:
+  ancient_lake:
+    center_x: 100
+    center_z: 200
+    radius: 50
+    name: "Danau Kuno"
+    description: "Danau legendaris dengan ikan langka"
+    fish_multiplier: 1.5
+    rare_fish_chance: 0.2
+    special_fish: [ancient_carp]
+    
+  deep_sea:
+    center_x: -500
+    center_z: 300
+    radius: 100
+    name: "Laut Dalam"
+    description: "Perairan dalam dengan ikan-ikan eksotis"
+    fish_multiplier: 2.0
+    rare_fish_chance: 0.3
+    special_fish: [giant_tuna, marlin]

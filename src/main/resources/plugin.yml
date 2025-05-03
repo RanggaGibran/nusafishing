@@ -1,0 +1,41 @@
+name: nusafishing
+main: id.nusafishing.NusaFishing
+version: 1.0-SNAPSHOT
+api-version: 1.20
+softdepend: [Vault]
+
+commands:
+  nusafishing:
+    description: Perintah utama plugin NusaFishing
+    aliases: [nf, fishing]
+    usage: /nusafishing help
+
+permissions:
+  nusafishing.rod:
+    description: Izin untuk mendapatkan pancingan custom
+    default: op
+  nusafishing.bait:
+    description: Izin untuk mendapatkan umpan custom
+    default: op
+  nusafishing.admin:
+    description: Izin admin untuk semua perintah
+    default: op
+    children:
+      nusafishing.admin.reload: true
+      nusafishing.rod: true
+      nusafishing.bait: true
+      nusafishing.repair: true
+      nusafishing.sell: true
+      nusafishing.shop: true
+  nusafishing.admin.reload:
+    description: Izin untuk memuat ulang konfigurasi
+    default: op
+  nusafishing.repair:
+    description: Izin untuk memperbaiki pancingan custom
+    default: true
+  nusafishing.sell:
+    description: Izin untuk menjual ikan
+    default: true
+  nusafishing.shop:
+    description: Izin untuk menggunakan toko
+    default: true

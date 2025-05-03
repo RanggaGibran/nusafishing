@@ -1,0 +1,52 @@
+# NusaFishing Main Configuration
+
+# Economy settings
+economy:
+  # Cost for repairing 1 durability point
+  repair_cost_per_durability: 5.0  # Dari 2.0 → 5.0 (2.5x lipat)
+  # Fish price multiplier (1.0 = normal price)
+  fish_price_multiplier: 0.8  # Dari 1.0 → 0.8 (20% lebih rendah)
+  # Whether to apply dynamic pricing based on supply/demand
+  dynamic_pricing: true
+  # Price fluctuation percentage (0.0 - 1.0)
+  price_fluctuation: 0.3  # Dari 0.2 → 0.3 (lebih banyak fluktuasi)
+
+# Player settings
+player:
+  # Maximum stamina value
+  max_stamina: 100.0
+  # Stamina regeneration amount per tick
+  stamina_regen: 1.0
+  # Stamina regeneration delay in ticks
+  stamina_regen_delay: 20
+
+# Fishing event settings
+events:
+  # Minimum time between events in minutes
+  min_cooldown_minutes: 30
+  
+  # Maximum time between events in minutes
+  max_cooldown_minutes: 120
+  
+  # Duration of events in minutes
+  duration_minutes: 30
+  
+  # Chance for an event to occur when checked (percentage)
+  chance_percent: 10.0
+  
+  # Valid biomes for events
+  valid_biomes:
+    - OCEAN
+    - DEEP_OCEAN
+    - WARM_OCEAN
+    - LUKEWARM_OCEAN
+    - COLD_OCEAN
+    - DEEP_WARM_OCEAN
+    - DEEP_LUKEWARM_OCEAN
+    - DEEP_COLD_OCEAN
+    - FROZEN_OCEAN
+    - DEEP_FROZEN_OCEAN
+    - RIVER
+    - FROZEN_RIVER
+    - BEACH
+    - SNOWY_BEACH
