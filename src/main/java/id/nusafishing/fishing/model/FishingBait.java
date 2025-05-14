@@ -105,7 +105,7 @@ public class FishingBait {
         remainingUses--;
         
         if (remainingUses <= 0) {
-            // Last use, reduce stack size
+            // Fix infinite bait issue - Force remove the last item
             int amount = offHandItem.getAmount();
             if (amount > 1) {
                 // Reset uses for the next item in stack
@@ -113,10 +113,9 @@ public class FishingBait {
                 offHandItem.setItemMeta(meta);
                 offHandItem.setAmount(amount - 1);
             } else {
-                // Remove the last item
+                // Remove the last item - force set to null instead of reducing amount
                 player.getInventory().setItemInOffHand(null);
             }
-            return true;
         } else {
             // Update uses left
             container.set(usesKey, PersistentDataType.INTEGER, remainingUses);
@@ -126,7 +125,7 @@ public class FishingBait {
             if (lore != null) {
                 for (int i = 0; i < lore.size(); i++) {
                     String line = lore.get(i);
-                    if (line.contains("Sisa penggunaan:")) {
+                    if (line.contains("Sisa penggunaan:") || line.contains("Penggunaan:") || line.contains("Uses:")) {
                         lore.set(i, "§7Sisa penggunaan: §e" + remainingUses + "/" + usesPerItem);
                         break;
                     }
@@ -135,7 +134,8 @@ public class FishingBait {
             }
             
             offHandItem.setItemMeta(meta);
-            return true;
         }
+        
+        return true;
     }
 }

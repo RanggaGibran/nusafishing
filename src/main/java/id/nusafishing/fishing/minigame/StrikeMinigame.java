@@ -176,10 +176,21 @@ public class StrikeMinigame {
         // Make sure to remove player's minigame metadata
         player.removeMetadata("NF_InMinigame", plugin);
         
+        // Remove any active fishing hooks from the player to force re-casting
+        removePlayerFishingHook(player);
+        
         if (success && fish != null) {
             // Award the fish to player
             player.getInventory().addItem(fish.createItemStack());
             player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+            
+            // Record the catch in statistics
+            plugin.getStatisticsManager().recordFishCaught(player.getUniqueId(), fish);
+            
+            // Record untuk turnamen juga jika sedang berlangsung
+            if (plugin.getTournamentManager().isTournamentActive()) {
+                plugin.getTournamentManager().recordCatch(player, fish);
+            }
             
             // Use titles instead of messages
             player.sendTitle(
@@ -209,6 +220,18 @@ public class StrikeMinigame {
     }
     
     /**
+     * Remove all fishing hooks from the player
+     * @param player The player to remove hooks from
+     */
+    private void removePlayerFishingHook(Player player) {
+        // Check all entities in the world for fishing hooks belonging to this player
+        player.getWorld().getEntitiesByClass(org.bukkit.entity.FishHook.class).stream()
+            .filter(hook -> hook.getShooter() instanceof Player)
+            .filter(hook -> ((Player) hook.getShooter()).getUniqueId().equals(player.getUniqueId()))
+            .forEach(org.bukkit.entity.Entity::remove);
+    }
+    
+    /**
      * End the minigame when player aborts by opening inventory
      * @param player The player who opened inventory
      */
@@ -219,6 +242,9 @@ public class StrikeMinigame {
         // Send specific failure message about opening inventory
         player.playSound(player.getLocation(), Sound.ENTITY_SALMON_FLOP, 1.0f, 0.5f);
         player.sendTitle("§c§lGagal!", "§fIkan lolos karena kamu membuka inventory!", 10, 70, 20);
+        
+        // Remove fishing hook
+        removePlayerFishingHook(player);
     }
     
     /**

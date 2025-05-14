@@ -84,6 +84,14 @@ public class PlayerSkillManager {
         return fishingExperience.getOrDefault(player.getUniqueId(), 0);
     }
     
+    public int getFishingLevel(UUID playerId) {
+        return fishingLevels.getOrDefault(playerId, 1);
+    }
+
+    public int getFishingExperience(UUID playerId) {
+        return fishingExperience.getOrDefault(playerId, 0);
+    }
+    
     public void addFishingExp(Player player, int expAmount) {
         UUID playerId = player.getUniqueId();
         int currentExp = fishingExperience.getOrDefault(playerId, 0);

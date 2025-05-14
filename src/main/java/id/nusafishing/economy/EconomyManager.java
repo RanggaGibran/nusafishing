@@ -13,6 +13,7 @@ import org.bukkit.plugin.RegisteredServiceProvider;
 
 import id.nusafishing.NusaFishing;
 import id.nusafishing.fishing.model.CustomFish;
+import id.nusafishing.fishing.model.FishingRod;
 
 public class EconomyManager {
     private final NusaFishing plugin;
@@ -112,9 +113,26 @@ public class EconomyManager {
     }
     
     /**
-     * Get the repair cost based on durability lost
+     * Get the repair cost based on durability lost and rod tier
      * @param durabilityLost Amount of durability to repair
+     * @param rodTier Tier of the fishing rod
      * @return The cost to repair
+     */
+    public double getRepairCost(int durabilityLost, FishingRod.RodTier rodTier) {
+        double baseCost = durabilityLost * repairCostPerDurability;
+        double multiplier = 1.0; // Default multiplier
+        
+        // Get multiplier based on tier from config
+        if (rodTier != null) {
+            multiplier = plugin.getConfig().getDouble(
+                "economy.repair_cost_multipliers." + rodTier.name(), 1.0);
+        }
+        
+        return baseCost * multiplier;
+    }
+
+    /**
+     * Maintain original method for backward compatibility
      */
     public double getRepairCost(int durabilityLost) {
         return durabilityLost * repairCostPerDurability;

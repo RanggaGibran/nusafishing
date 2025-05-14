@@ -27,7 +27,9 @@ import id.nusafishing.fishing.model.CustomFish;
 import id.nusafishing.fishing.model.FishingBait;
 import id.nusafishing.fishing.model.FishingRod;
 import id.nusafishing.event.FishingEventManager;
+import id.nusafishing.event.ConfigEventFish;
 import id.nusafishing.event.EventFish;
+import id.nusafishing.event.EventType;
 
 public class FishingManager {
     private final NusaFishing plugin;
@@ -182,10 +184,101 @@ public class FishingManager {
         FishingEventManager eventManager = plugin.getEventManager();
         
         // Check if an event is active and this location is valid
-        EventFish eventFish = eventManager.canCatchEventFish(player, location);
+        if (!eventManager.isEventActive()) {
+            return null;
+        }
         
-        if (eventFish != null) {
-            // Create the custom fish instance
+        // Check biome compatibility
+        Biome biome = location.getBlock().getBiome();
+        if (!eventManager.isEventActiveForBiome(biome)) {
+            return null;
+        }
+        
+        // Calculate chance based on time elapsed in event - make it slower
+        int eventTimeRemaining = eventManager.getEventTimeRemaining();
+        int eventDuration = plugin.getConfig().getInt("events.duration_minutes", 30) * 60; // in seconds
+        int timeElapsed = eventDuration - eventTimeRemaining;
+        
+        // Much lower initial chance (0.1%) with slower growth rate
+        // Increase up to only 5% at the end of the event
+        double baseChance = 0.001; // 0.1% initial
+        double maxChance = 0.05;  // 5% maximum (was 10%)
+        
+        // Lower the progression rate by using square root function
+        double progressFactor = Math.sqrt(Math.min(1.0, timeElapsed / (double)eventDuration));
+        double currentChance = baseChance + progressFactor * (maxChance - baseChance);
+        
+        // Factor in fishing rod quality more significantly
+        ItemStack fishingRod = player.getInventory().getItemInMainHand();
+        ItemMeta meta = fishingRod.getItemMeta();
+        double rodBonus = 0.0;
+        
+        // FIX: Check if the ItemMeta has CustomModelData before accessing it
+        if (meta != null && meta.hasCustomModelData()) {
+            FishingRod rod = getFishingRodByModelData(meta.getCustomModelData());
+            if (rod != null) {
+                // More significant rod bonuses based on tier
+                switch (rod.getTier()) {
+                    case MASTER:
+                        rodBonus = 0.03; // +3%
+                        break;
+                    case EXPERT:
+                        rodBonus = 0.02; // +2%
+                        break;
+                    case ADVANCED:
+                        rodBonus = 0.01; // +1%
+                        break;
+                    case INTERMEDIATE:
+                        rodBonus = 0.005; // +0.5%
+                        break;
+                    default:
+                        rodBonus = 0.0;
+                }
+            }
+        }
+        
+        // Factor in bait quality more significantly
+        ItemStack offHandItem = player.getInventory().getItemInOffHand();
+        FishingBait bait = getBaitFromItem(offHandItem);
+        double baitBonus = 0.0;
+        if (bait != null) {
+            // Base bonus from tier boost
+            baitBonus = bait.getTierBoost() * 0.005; // Each tier is +0.5%
+            
+            // Premium bait gets extra boost
+            if (bait.getId().equals("rare_bait")) {
+                baitBonus *= 2; // Double the bonus for premium bait
+            }
+        }
+        
+        // Factor in fishing skill
+        int fishingLevel = plugin.getSkillManager().getFishingLevel(player);
+        double skillBonus = fishingLevel * 0.0005; // 0.05% per level (reduced from 0.1%)
+        
+        // Calculate total chance with all factors
+        double totalChance = currentChance + rodBonus + baitBonus + skillBonus;
+        
+        // Show chance in action bar (this is the new addition)
+        String chanceMessage = String.format("§6§lEvent: §e%.2f%% §7peluang mendapat ikan mistik §8(+%.1f%% alat, +%.1f%% umpan, +%.1f%% skill)",
+                totalChance * 100, rodBonus * 100, baitBonus * 100, skillBonus * 100);
+        player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(chanceMessage));
+        
+        // Random check with the calculated chance
+        if (random.nextDouble() <= totalChance) {
+            // Got lucky! Check if event is active and has a fish type
+            EventType activeEventType = eventManager.getActiveEventType();
+            if (activeEventType == null) {
+                plugin.getLogger().warning("Active event type is null when trying to get event fish");
+                return null;
+            }
+            
+            ConfigEventFish eventFish = activeEventType.getRandomEventFish();
+            if (eventFish == null) {
+                plugin.getLogger().warning("No event fish found for event type: " + activeEventType.name());
+                return null;
+            }
+            
+            // Create and return the custom fish
             return eventFish.createCustomFish();
         }
         
@@ -205,120 +298,85 @@ public class FishingManager {
             return eventFish;
         }
         
+        // Get location and environment information
         Location location = player.getLocation();
         World world = location.getWorld();
         Biome biome = location.getBlock().getBiome();
         
-        // Determine time of day and weather
-        String timeOfDay = getTimeOfDay(world.getTime());
-        String weather = getWeatherCondition(world);
-        
-        // Check for player's bait
-        ItemStack offHandItem = player.getInventory().getItemInOffHand();
-        FishingBait bait = getBaitFromItem(offHandItem);
-        
-        // Get player's skill level modifier
-        PlayerSkillManager skillManager = plugin.getSkillManager();
-        double skillQualityModifier = skillManager.getQualityModifier(player);
-        double skillSuccessChance = skillManager.getFishingSuccessChance(player);
-        
-        // Get the special location if player is in one
-        SpecialLocation specialLocation = getPlayerSpecialLocation(player);
-        
-        // Prepare weighted selection for fish
-        List<CustomFish> availableFish = new ArrayList<>();
-        List<Double> fishWeights = new ArrayList<>();
-        double totalWeight = 0;
-        
-        Map<String, CustomFish> fishMap = configManager.getCustomFishes();
-        
         // Calculate tier boost from rod and bait
         int totalTierBoost = 0;
         double qualityBoost = 1.0;
-        double weightBoost = 1.0;  // Default: tidak ada boost berat
+        double weightBoost = 1.0;
 
         if (rod != null) {
             totalTierBoost += rod.getTier().getTierBoost();
             qualityBoost *= rod.getQualityBoost();
+        } else {
+            // Default values for vanilla rod - reduced penalty to help players
+            totalTierBoost = 0;
+            qualityBoost = 0.9;  // Less penalty than before (0.8 → 0.9)
         }
 
-        if (bait != null) {
-            totalTierBoost += bait.getTierBoost();
-            qualityBoost *= bait.getQualityBoost();  // Terapkan boost kualitas dari umpan
-            weightBoost *= bait.getWeightBoost();    // Terapkan boost berat dari umpan
+        // Add the missing section to populate availableFish
+        List<CustomFish> availableFish = new ArrayList<>();
+        List<Double> fishWeights = new ArrayList<>();
+        double totalWeight = 0.0;
+        
+        // Get all fish from config
+        Map<String, CustomFish> allFish = configManager.getCustomFishes();
+        
+        // Get player's special location if any
+        SpecialLocation specialLocation = getPlayerSpecialLocation(player);
+        
+        // Get current time of day and weather
+        String timeOfDay = getTimeOfDay(world.getTime());
+        String weather = getWeatherCondition(world);
+        
+        // Get active bait if any
+        ItemStack offHandItem = player.getInventory().getItemInOffHand();
+        FishingBait activeBait = getBaitFromItem(offHandItem);
+        
+        // Calculate weight for each fish and add to available list if catchable
+        for (CustomFish fish : allFish.values()) {
+            // Skip event fish in normal fishing
+            if (fish.getId().startsWith("event_")) continue;
+            
+            // Calculate weight based on various factors
+            double weight = calculateFishWeight(fish, activeBait, specialLocation);
+            
+            // If weight > 0, fish can be caught in current conditions
+            if (weight > 0) {
+                availableFish.add(fish);
+                fishWeights.add(weight);
+                totalWeight += weight;
+            }
         }
 
-        // Apply skill quality boost
-        qualityBoost *= skillQualityModifier;
-
-        // Check for special fish from special locations first
-        if (specialLocation != null && !specialLocation.specialFish.isEmpty() && 
-            random.nextDouble() < specialLocation.rareFishChance) {
-            
-            // Try to catch a special fish
-            String specialFishId = specialLocation.specialFish.get(
-                random.nextInt(specialLocation.specialFish.size()));
-            
-            CustomFish specialFish = fishMap.get(specialFishId);
-            if (specialFish != null) {
-                // Fix: Pass the required parameters to createCaughtInstance
-                CustomFish caughtFish = specialFish.createCaughtInstance(totalTierBoost, qualityBoost, weightBoost);
-                
-                // Apply additional bonuses for special fish
-                // Location fish should be better quality due to rarity
-                return caughtFish;
+        // IMPORTANT: If no fish matches criteria, return at least a common fish
+        // This ensures vanilla rods always catch something
+        if (availableFish.isEmpty()) {
+            CustomFish defaultFish = configManager.getCustomFishes().get("small_carp");
+            if (defaultFish != null) {
+                return defaultFish.createCaughtInstance(totalTierBoost, qualityBoost, weightBoost);
             }
         }
         
-        // Filter and weigh normal fish based on conditions
-        for (CustomFish fish : fishMap.values()) {
-            // Skip if using bait that can't catch this fish
-            if (bait != null && !bait.canCatchFish(fish.getId())) {
-                continue;
-            }
-            
-            // Calculate base weight for this fish
-            double fishWeight = calculateFishWeight(fish, bait, specialLocation);
-            
-            // Add to selection pool
-            availableFish.add(fish);
-            fishWeights.add(fishWeight);
-            totalWeight += fishWeight;
-        }
-        
-        // Perform weighted random selection
-        if (totalWeight > 0) {
+        // Select a random fish using weighted probability
+        if (!availableFish.isEmpty() && totalWeight > 0) {
             double randomValue = random.nextDouble() * totalWeight;
-            double weightSum = 0;
+            double cumulativeWeight = 0;
             
             for (int i = 0; i < availableFish.size(); i++) {
-                weightSum += fishWeights.get(i);
-                if (randomValue < weightSum) {
-                    // Consume one use of bait if available
-                    if (bait != null) {
-                        bait.consumeUse(player);
-                        
-                        // Show particle effect to indicate bait use
-                        player.spawnParticle(Particle.WATER_BUBBLE, 
-                                            player.getLocation().add(0, 0.5, 0), 
-                                            10, 0.2, 0.2, 0.2, 0.1);
-                    }
-                    
-                    // Fix the null check before accessing bait.getValidFish()
-                    if (bait != null && !bait.getValidFish().isEmpty() && bait.getValidFish().contains(availableFish.get(i).getId())) {
-                        qualityBoost *= 1.2;  // 20% bonus kualitas untuk ikan yang cocok
-                        weightBoost *= 1.3;   // 30% bonus berat untuk ikan yang cocok
-                    }
-
-                    // Create instance of the selected fish with all boosts
-                    double maxPossibleWeight = rod != null ? rod.getMaxWeightCapacity() : 100.0; // Default 100kg jika tidak ada rod
+                cumulativeWeight += fishWeights.get(i);
+                if (randomValue <= cumulativeWeight) {
+                    double maxPossibleWeight = rod != null ? rod.getMaxWeightCapacity() : 100.0;
                     return availableFish.get(i).createCaughtInstance(totalTierBoost, qualityBoost, weightBoost, maxPossibleWeight);
                 }
             }
         }
         
-        // No fish available
-        return null;
+        // Fallback to return a basic fish
+        return configManager.getCustomFishes().get("small_carp").createCaughtInstance(0, 1.0, 1.0);
     }
     
     /**

@@ -120,6 +120,7 @@ public class FishingListener implements Listener {
         
         // Check if using custom fishing rod
         FishingRod customRod = getCustomFishingRod(fishingRod);
+        // Allow vanilla rods (customRod will be null but we'll handle that)
         
         if (event.getState() == State.FISHING) {
             // Player cast their line
@@ -130,6 +131,21 @@ public class FishingListener implements Listener {
         } else if (event.getState() == State.CAUGHT_FISH) {
             // Default fish caught - replace with custom mechanics
             event.setCancelled(true);
+            
+            // If we get here during a minigame, let the minigame handle it
+            // Otherwise, for vanilla rods with no active minigame, try to complete normally
+            if (!isPlayerInMinigame(player) && customRod == null) {
+                // Try to process a catch for vanilla rod if no minigame is active
+                CustomFish fish = fishingManager.selectRandomFish(player, null);
+                if (fish != null) {
+                    player.getInventory().addItem(fish.createItemStack());
+                    player.sendMessage("§aKamu menangkap §f" + fish.getName() + "§a!");
+                    player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+                    
+                    // TAMBAHAN: Hapus fishing hook setelah berhasil menangkap ikan
+                    removePlayerFishingHook(player);
+                }
+            }
         }
     }
     
@@ -143,6 +159,7 @@ public class FishingListener implements Listener {
         if (isPlayerInMinigame(player)) {
             player.sendMessage("§c§lIkan lolos! §fKamu membuka inventory saat memancing.");
             strikeMinigame.endMinigameAbort(player);
+            removePlayerFishingHook(player);
         }
     }
     
@@ -267,7 +284,7 @@ public class FishingListener implements Listener {
             return;
         }
         
-        // Check rod durability again as a safety measure
+        // Check rod durability only for custom rods
         if (customRod != null) {
             int currentDurability = getRodDurability(fishingRod);
             if (currentDurability <= DURABILITY_LOSS_ON_CATCH) {
@@ -275,157 +292,43 @@ public class FishingListener implements Listener {
             }
         }
         
-        // Get active bait instead of checking offhand
+        // Get active bait
         UUID playerId = player.getUniqueId();
         FishingBait bait = activeBaits.get(playerId);
         
-        // Display bait effect if using bait
+        // Consume bait if available
         if (bait != null) {
-            showBaitEffect(player, bait);
+            boolean consumed = bait.consumeUse(player);
+            
+            if (consumed) {
+                player.spawnParticle(Particle.WATER_BUBBLE, 
+                    player.getLocation().add(0, 0.5, 0), 
+                    10, 0.2, 0.2, 0.2, 0.1);
+            }
         }
         
         // Select a random fish based on player's location, rod, bait, etc.
         CustomFish fish = fishingManager.selectRandomFish(player, customRod);
         
-        if (fish != null) {
-            // Keep the huge fish notification but without record tracking
-            if (fish.getWeight() >= 1000) {
-                player.sendTitle(
-                    "§d§l✦✦ IKAN RAKSASA! ✦✦", 
-                    "§fKamu menangkap §b" + fish.getName() + " §e" + fish.getFormattedWeight() + "§f!",
-                    10, 60, 20
-                );
-                
-                player.getWorld().spawnParticle(Particle.TOTEM, player.getLocation(),
-                    100, 3, 3, 3, 0.1);
-                player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 0.5f, 1.0f);
-            }
-            
-            // IMPORTANT: Cancel all active fishing hooks/bobbers for this player before starting minigame
-            cancelAllFishingHooks(player);
-            
-            // Set metadata to indicate player is in minigame
-            player.setMetadata("NF_InMinigame", new FixedMetadataValue(plugin, true));
-            
-            // Add visual effects based on fish tier
-            int tierIndex = 0;
-            if (fish.getActualTier() != null) {
-                tierIndex = fish.getActualTier().ordinal();
-            } else {
-                // Fallback to base tier if actual tier is null
-                tierIndex = fish.getBaseTier().ordinal();
-                // Log the issue for debugging
-                plugin.getLogger().warning("Null actualTier found for fish: " + fish.getId() + ", using baseTier instead");
-            }
-            
-            switch (tierIndex) {
-                case 4: // LEGENDARY
-                    player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 0.3f, 1.5f);
-                    player.spawnParticle(Particle.TOTEM, player.getLocation(), 30, 0.5, 0.5, 0.5, 0.1);
-                    break;
-                case 3: // EPIC
-                    player.playSound(player.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, 1.0f, 1.0f);
-                    player.spawnParticle(Particle.ENCHANTMENT_TABLE, player.getLocation(), 20, 0.5, 0.3, 0.5, 0.1);
-                    break;
-                case 2: // RARE
-                    player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 0.7f);
-                    player.spawnParticle(Particle.END_ROD, player.getLocation(), 15, 0.3, 0.3, 0.3, 0.05);
-                    break;
-                default:
-                    // Normal sounds for common/uncommon
-                    player.playSound(player.getLocation(), Sound.ENTITY_FISHING_BOBBER_SPLASH, 1.0f, 1.0f);
-            }
-            
-            // Start the minigame
-            strikeMinigame.startStrikeGame(player, fish, fishingRod, DURABILITY_LOSS_ON_CATCH);
-            
-            // Use bait (consume one use)
-            if (bait != null) {
-                consumeBaitFromInventory(player, bait);
-            }
-            
-            // Tambahkan wear & tear yang lebih signifikan untuk ikan berat
-            if (fishingRod != null && customRod != null) {
-                // Skala kerusakan berdasarkan berat relatif terhadap kapasitas
-                // 1. Dapatkan kapasitas maksimal rod
-                double maxCapacity = customRod.getMaxWeightCapacity();
-                
-                // 2. Hitung persentase kapasitas yang digunakan
-                double capacityUsedPercent = (fish.getWeight() / maxCapacity) * 100.0;
-                
-                // 3. Skala kerusakan berdasarkan persentase
-                int baseDurabilityLoss = DURABILITY_LOSS_ON_CATCH; // Nilai dasar (2)
-                
-                int scaledDurabilityLoss;
-                if (capacityUsedPercent < 20) {
-                    // Ikan ringan - kerusakan normal
-                    scaledDurabilityLoss = baseDurabilityLoss;
-                } else if (capacityUsedPercent < 50) {
-                    // Ikan medium - kerusakan sedang
-                    scaledDurabilityLoss = baseDurabilityLoss * 2;
-                } else if (capacityUsedPercent < 80) {
-                    // Ikan berat - kerusakan tinggi
-                    scaledDurabilityLoss = baseDurabilityLoss * 3;
-                } else {
-                    // Ikan sangat berat (mendekati kapasitas) - kerusakan ekstrem
-                    scaledDurabilityLoss = baseDurabilityLoss * 5;
-                }
-                
-                // 4. Terapkan kerusakan
-                reduceDurability(player, fishingRod, scaledDurabilityLoss);
-            }
-            
-            // Tambahkan informasi jika umpan membantu menangkap ikan
-            if (bait != null) {
-                String baitBonus = "";
-                
-                // Cek apakah ikan cocok dengan umpan
-                if (bait.getValidFish().contains(fish.getId())) {
-                    String qualityText = "+" + (int)((bait.getQualityBoost() * 1.2 - 1.0) * 100) + "% kualitas";
-                    String weightText = "+" + (int)((bait.getWeightBoost() * 1.3 - 1.0) * 100) + "% berat";
-                    baitBonus = "§a§l("+qualityText+", "+weightText+")";
-                    player.sendMessage("§a§l[SEMPURNA!] §fUmpan §e" + bait.getName() + " §famat efektif untuk §b" + fish.getName() + "! " + baitBonus);
-                } else {
-                    String qualityText = "+" + (int)((bait.getQualityBoost() - 1.0) * 100) + "% kualitas";
-                    String weightText = "+" + (int)((bait.getWeightBoost() - 1.0) * 100) + "% berat";
-                    baitBonus = "§e("+qualityText+", "+weightText+")";
-                    player.sendMessage("§a§l[SUKSES] §fUmpan §e" + bait.getName() + " §fmeningkatkan hasil tangkapan! " + baitBonus);
-                }
-            }
-            
-            // Tambahkan informasi jika umpan membantu menangkap ikan
-            if (bait != null && bait.getValidFish().contains(fish.getId())) {
-                // Efek spesial jika umpan cocok dengan ikan
-                player.sendMessage("§a§o" + bait.getName() + " sangat efektif untuk menangkap " + fish.getName() + "!");
-                player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 1.0f, 1.5f);
-                player.spawnParticle(Particle.VILLAGER_HAPPY, player.getLocation().add(0, 1, 0), 
-                                    10, 0.5, 0.5, 0.5, 0.1);
-            }
-            
-            // Kurangi stamina berdasarkan berat ikan
-            plugin.getStaminaManager().consumeStaminaForFish(player, fish, customRod);
-            
-            // Check if this was an event fish
-            if (fish != null && fish.getId().startsWith("event_")) {
-                // Notify the event manager
-                plugin.getEventManager().handleEventFishCaught(player, fish);
-            }
-            
-            // Schedule the removal of metadata after max time
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    player.removeMetadata("NF_InMinigame", plugin);
-                    // Clear active bait when minigame ends
-                    activeBaits.remove(playerId);
-                }
-            }.runTaskLater(plugin, 20 * 15); // 15 seconds max
-        } else {
-            // Efek suara saja tanpa pesan
-            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 0.5f, 0.8f);
-            // Clear active bait on failure
-            activeBaits.remove(playerId);
+        // Debug message to help diagnose the issue
+        if (fish == null) {
+            player.sendMessage("§c§oTidak bisa menemukan ikan yang cocok untuk ditangkap.");
+            return;
         }
+        
+        // TAMBAHAN: Hapus fishing hook segera setelah ikan menggigit
+        // sehingga pemain harus melempar kembali setelah gigitan
+        removePlayerFishingHook(player);
+        
+        // Memulai minigame tangkap ikan
+        int durabilityLoss = customRod != null ? DURABILITY_LOSS_ON_CATCH : 0;
+        
+        // Start the fishing minigame with the selected fish
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            strikeMinigame.startStrikeGame(player, fish, fishingRod, durabilityLoss);
+            // Set metadata to mark player as in minigame
+            player.setMetadata("NF_InMinigame", new FixedMetadataValue(plugin, true));
+        });
     }
     
     private boolean consumeBaitFromInventory(Player player, FishingBait bait) {
@@ -569,6 +472,18 @@ public class FishingListener implements Listener {
                 .filter(hook -> hook.getShooter() instanceof Player)
                 .filter(hook -> ((Player)hook.getShooter()).getUniqueId().equals(player.getUniqueId()))
                 .forEach(org.bukkit.entity.Entity::remove);
+    }
+    
+    /**
+     * Remove all fishing hooks from the player
+     * @param player The player to remove hooks from
+     */
+    private void removePlayerFishingHook(Player player) {
+        // Check all entities in the world for fishing hooks belonging to this player
+        player.getWorld().getEntitiesByClass(org.bukkit.entity.FishHook.class).stream()
+            .filter(hook -> hook.getShooter() instanceof Player)
+            .filter(hook -> ((Player) hook.getShooter()).getUniqueId().equals(player.getUniqueId()))
+            .forEach(org.bukkit.entity.Entity::remove);
     }
     
     /**

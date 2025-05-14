@@ -15,6 +15,11 @@ import id.nusafishing.fishing.data.StaminaManager;
 import id.nusafishing.util.ItemBuilder;
 import id.nusafishing.gui.GUIListener;
 import id.nusafishing.event.FishingEventManager;
+import id.nusafishing.event.ConfigEventFish;
+import id.nusafishing.placeholder.NusaFishingPlaceholders;
+import id.nusafishing.fishing.data.FishingStatisticsManager;
+import id.nusafishing.tournament.TournamentManager;
+import id.nusafishing.managers.RewardsManager;
 
 public class NusaFishing extends JavaPlugin {
     private static final Logger LOGGER = Logger.getLogger("nusafishing");
@@ -27,6 +32,9 @@ public class NusaFishing extends JavaPlugin {
     private FishingManager fishingManager;
     private EconomyManager economyManager;
     private FishingEventManager eventManager;
+    private FishingStatisticsManager statisticsManager;
+    private TournamentManager tournamentManager;
+    private RewardsManager rewardsManager;
     
     private BukkitTask priceUpdateTask;
     
@@ -40,6 +48,13 @@ public class NusaFishing extends JavaPlugin {
         
         // Initialize managers
         configManager = new ConfigManager(this);
+        
+        // Load event fish from config
+        ConfigEventFish.loadFromConfig(this);
+        
+        // Initialize statistics manager
+        statisticsManager = new FishingStatisticsManager(this);
+        
         staminaManager = new StaminaManager(this);
         skillManager = new PlayerSkillManager(this);
         
@@ -52,6 +67,12 @@ public class NusaFishing extends JavaPlugin {
         // Initialize event manager after fishing manager
         eventManager = new FishingEventManager(this);
         
+        // Initialize tournament manager
+        tournamentManager = new TournamentManager(this);
+        
+        // Initialize rewards manager
+        this.rewardsManager = new RewardsManager(this);
+        
         // Register listeners
         FishingListener fishingListener = new FishingListener(this, fishingManager, staminaManager, skillManager);
         getServer().getPluginManager().registerEvents(fishingListener, this);
@@ -63,6 +84,12 @@ public class NusaFishing extends JavaPlugin {
         NusaFishingCommand commandExecutor = new NusaFishingCommand(this, fishingManager);
         getCommand("nusafishing").setExecutor(commandExecutor);
         getCommand("nusafishing").setTabCompleter(commandExecutor);
+        
+        // Register PlaceholderAPI expansion if available
+        if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
+            new NusaFishingPlaceholders(this).register();
+            getLogger().info("PlaceholderAPI ditemukan - placeholder NusaFishing terdaftar!");
+        }
         
         // Schedule price regeneration task if economy is enabled (runs every 15 minutes)
         if (economyManager.isEconomyEnabled()) {
@@ -83,6 +110,11 @@ public class NusaFishing extends JavaPlugin {
             skillManager.saveAllData();
         }
         
+        // Save statistics before shutdown
+        if (statisticsManager != null) {
+            statisticsManager.saveAllStats();
+        }
+        
         // Clean up resources
         if (staminaManager != null) {
             getServer().getOnlinePlayers().forEach(player -> 
@@ -97,6 +129,11 @@ public class NusaFishing extends JavaPlugin {
         // Shutdown event manager
         if (eventManager != null) {
             eventManager.shutdown();
+        }
+        
+        // Shutdown tournament manager
+        if (tournamentManager != null) {
+            tournamentManager.shutdown();
         }
         
         LOGGER.info("NusaFishing disabled");
@@ -132,12 +169,27 @@ public class NusaFishing extends JavaPlugin {
         return eventManager;
     }
     
+    public FishingStatisticsManager getStatisticsManager() {
+        return statisticsManager;
+    }
+    
+    public TournamentManager getTournamentManager() {
+        return tournamentManager;
+    }
+    
+    public RewardsManager getRewardsManager() {
+        return rewardsManager;
+    }
+    
     public void reloadAllConfigurations() {
         // Reload main config
         reloadConfig();
         
         // Reload fishing config
         configManager.reloadConfigs();
+        
+        // Reload event fish from config
+        ConfigEventFish.loadFromConfig(this);
         
         // Reload dependent systems
         fishingManager.reloadConfig();

@@ -159,23 +159,22 @@ public class ConfigManager {
     }
     
     public void reloadConfigs() {
-        // Reload the main config
+        // Reload plugin config
         plugin.reloadConfig();
         
-        // Reload the fishing config by reading it from disk again
-        fishingConfigFile = new File(plugin.getDataFolder(), "fishing.yml");
-        fishingConfig = YamlConfiguration.loadConfiguration(fishingConfigFile);
+        // Reload fishing config
+        reloadFishingConfig();
         
-        // Clear existing maps to avoid duplicate or stale data
-        fishingRods.clear();
-        fishingBaits.clear();
-        customFishes.clear();
+        // Reload the rewards config
+        plugin.getRewardsManager().reloadRewardsConfig();
         
-        // Reload all data from the fresh config
+        // Log message
+        plugin.getLogger().info("Semua konfigurasi berhasil dimuat ulang!");
+    }
+
+    public void reloadFishingConfig() {
+        createFishingConfig();
         loadFishingConfig();
-        
-        // Log success
-        plugin.getLogger().info("Configurations reloaded successfully!");
     }
     
     public FileConfiguration getFishingConfig() {

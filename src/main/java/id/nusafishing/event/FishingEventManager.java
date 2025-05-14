@@ -87,7 +87,7 @@ public class FishingEventManager {
                 Biome biome = Biome.valueOf(biomeName.toUpperCase());
                 validBiomes.add(biome);
             } catch (IllegalArgumentException e) {
-                plugin.getLogger().warning("Invalid biome name in config: " + biomeName);
+                plugin.getLogger().warning("Invalid biome in config: " + biomeName);
             }
         }
         
@@ -100,33 +100,28 @@ public class FishingEventManager {
     private void setupBiomeEvents() {
         // Ocean biomes can have all events
         for (Biome biome : validBiomes) {
+            List<EventType> biomeEventTypes = new ArrayList<>();
+            
             if (biome.toString().contains("OCEAN")) {
-                biomeEvents.put(biome, Arrays.asList(
-                    EventType.LEVIATHAN_HUNT,
-                    EventType.ANCIENT_GUARDIAN,
-                    EventType.ABYSSAL_HORROR
-                ));
-            } 
-            // River biomes have river-specific events
-            else if (biome.toString().contains("RIVER")) {
-                biomeEvents.put(biome, Arrays.asList(
-                    EventType.RIVER_TITAN,
-                    EventType.GOLDEN_CATCH
-                ));
+                // All ocean biomes can have these events
+                biomeEventTypes.add(EventType.LEVIATHAN_HUNT);
+                biomeEventTypes.add(EventType.ANCIENT_GUARDIAN);
+                biomeEventTypes.add(EventType.ABYSSAL_HORROR);
+                biomeEventTypes.add(EventType.GOLDEN_CATCH);
+                biomeEventTypes.add(EventType.COASTAL_TREASURE);
+            } else if (biome.toString().contains("RIVER")) {
+                // River events
+                biomeEventTypes.add(EventType.RIVER_TITAN);
+                biomeEventTypes.add(EventType.GOLDEN_CATCH);
+            } else if (biome.toString().contains("BEACH")) {
+                // Beach events
+                biomeEventTypes.add(EventType.COASTAL_TREASURE);
+                biomeEventTypes.add(EventType.GOLDEN_CATCH);
             }
-            // Beach areas have their own events
-            else if (biome.toString().contains("BEACH")) {
-                biomeEvents.put(biome, Arrays.asList(
-                    EventType.COASTAL_TREASURE,
-                    EventType.GOLDEN_CATCH
-                ));
-            }
-            // Default events for any other water biomes
-            else {
-                biomeEvents.put(biome, Arrays.asList(
-                    EventType.GOLDEN_CATCH,
-                    EventType.RIVER_TITAN
-                ));
+            
+            // Add the biome to the map if it has any event types
+            if (!biomeEventTypes.isEmpty()) {
+                biomeEvents.put(biome, biomeEventTypes);
             }
         }
     }
@@ -144,18 +139,18 @@ public class FishingEventManager {
         eventCheckTask = new BukkitRunnable() {
             @Override
             public void run() {
-                // Don't check if an event is already active
-                if (eventActive) return;
-                
-                // Don't check if we haven't passed the minimum cooldown
-                long currentTime = System.currentTimeMillis();
-                if (currentTime - lastEventTime < minEventCooldownMinutes * 60 * 1000) {
-                    return;
-                }
-                
-                // Random chance to start an event
-                if (random.nextDouble() * 100 < eventChancePercent) {
-                    startRandomEvent();
+                // Only check for new events if no event is currently active
+                if (!eventActive) {
+                    // Check if enough time has passed since the last event
+                    long currentTime = System.currentTimeMillis();
+                    long minCooldown = minEventCooldownMinutes * 60 * 1000; // Convert to ms
+                    
+                    if (lastEventTime == 0 || (currentTime - lastEventTime) >= minCooldown) {
+                        // Roll the dice to see if an event should start
+                        if (random.nextDouble() * 100 < eventChancePercent) {
+                            startRandomEvent();
+                        }
+                    }
                 }
             }
         }.runTaskTimer(plugin, 20 * 60, 20 * 60 * 5); // Initial 1 minute delay, then every 5 minutes
@@ -175,6 +170,11 @@ public class FishingEventManager {
                     allEventTypes.add(event);
                 }
             }
+        }
+        
+        if (allEventTypes.isEmpty()) {
+            plugin.getLogger().warning("No event types available to start an event!");
+            return;
         }
         
         EventType chosenEvent = allEventTypes.get(random.nextInt(allEventTypes.size()));
@@ -214,9 +214,7 @@ public class FishingEventManager {
         eventEndTask = new BukkitRunnable() {
             @Override
             public void run() {
-                if (eventActive && activeEventType == eventType) {
-                    endEvent(false); // End with timeout
-                }
+                endEvent(false);
             }
         }.runTaskLater(plugin, 20 * 60 * eventDurationMinutes);
         
@@ -252,8 +250,7 @@ public class FishingEventManager {
         } else {
             // Time ran out - nobody won
             endTitle = "§c§l⚡ EVENT BERAKHIR ⚡";
-            endMessage = "§fEvent §e" + activeEventType.getDisplayName() + 
-                    " §ftelah berakhir. Tidak ada yang berhasil menangkap ikan legendaris!";
+            endMessage = "§fTidak ada yang berhasil menangkap ikan legendaris. Event berakhir!";
         }
         
         broadcastEventMessage(endTitle, endMessage);
@@ -291,9 +288,9 @@ public class FishingEventManager {
      * Check if a special event fish can be caught
      * @param player The player fishing
      * @param location The location they're fishing at
-     * @return The EventFish that can be caught, or null
+     * @return The ConfigEventFish that can be caught, or null
      */
-    public EventFish canCatchEventFish(Player player, Location location) {
+    public ConfigEventFish canCatchEventFish(Player player, Location location) {
         if (!eventActive || activeEventType == null) {
             return null;
         }
@@ -359,9 +356,10 @@ public class FishingEventManager {
         // Add special rewards here if desired
         // For example:
         // - Give fishing XP
-        // plugin.getSkillManager().addFishingExp(player, 1000);
+        plugin.getSkillManager().addFishingExp(player, 1000);
         // - Give special items
         // - Give currency rewards
+        plugin.getEconomyManager().depositMoney(player, 25000);
     }
     
     /**
@@ -372,19 +370,7 @@ public class FishingEventManager {
         
         for (Map.Entry<Biome, List<EventType>> entry : biomeEvents.entrySet()) {
             if (entry.getValue().contains(eventType)) {
-                // Format biome name nicely
-                String biomeName = entry.getKey().toString();
-                biomeName = biomeName.replace('_', ' ').toLowerCase();
-                String[] words = biomeName.split(" ");
-                StringBuilder formatted = new StringBuilder();
-                
-                for (String word : words) {
-                    formatted.append(word.substring(0, 1).toUpperCase())
-                            .append(word.substring(1))
-                            .append(" ");
-                }
-                
-                relevantBiomes.add(formatted.toString().trim());
+                relevantBiomes.add(formatBiomeName(entry.getKey().toString()));
             }
         }
         
@@ -396,14 +382,28 @@ public class FishingEventManager {
         } else {
             StringBuilder result = new StringBuilder();
             for (int i = 0; i < relevantBiomes.size() - 1; i++) {
-                result.append(relevantBiomes.get(i));
-                if (i < relevantBiomes.size() - 2) {
-                    result.append(", ");
-                }
+                result.append(relevantBiomes.get(i)).append(", ");
             }
-            result.append(" atau ").append(relevantBiomes.get(relevantBiomes.size() - 1));
+            result.append("atau ").append(relevantBiomes.get(relevantBiomes.size() - 1));
             return result.toString();
         }
+    }
+    
+    /**
+     * Format a biome name for display
+     * @param biomeName The internal biome name
+     * @return A formatted biome name
+     */
+    private String formatBiomeName(String biomeName) {
+        biomeName = biomeName.replace("_", " ").toLowerCase();
+        String[] words = biomeName.split(" ");
+        StringBuilder result = new StringBuilder();
+        for (String word : words) {
+            result.append(word.substring(0, 1).toUpperCase())
+                  .append(word.substring(1))
+                  .append(" ");
+        }
+        return result.toString().trim();
     }
     
     /**
@@ -412,7 +412,7 @@ public class FishingEventManager {
     private void broadcastEventMessage(String title, String message) {
         // Server-wide title message
         for (Player player : Bukkit.getOnlinePlayers()) {
-            player.sendTitle(title, message, 10, 70, 20);
+            player.sendTitle(title, "§f" + message, 10, 70, 20);
         }
         
         // Chat message with fancy formatting
@@ -429,7 +429,7 @@ public class FishingEventManager {
      */
     private String formatWeight(double weight) {
         if (weight < 1.0) {
-            return String.format("%.2f g", weight * 1000);
+            return String.format("%.2f gram", weight * 1000);
         } else if (weight < 1000.0) {
             return String.format("%.2f kg", weight);
         } else {
@@ -469,7 +469,7 @@ public class FishingEventManager {
     
     /**
      * Force start a specific event (admin command)
-     * @param eventType The event type to start
+     * @param eventTypeName The event type to start
      * @return true if the event was started
      */
     public boolean forceStartEvent(String eventTypeName) {
@@ -497,10 +497,12 @@ public class FishingEventManager {
     public void shutdown() {
         if (eventCheckTask != null) {
             eventCheckTask.cancel();
+            eventCheckTask = null;
         }
         
         if (eventEndTask != null) {
             eventEndTask.cancel();
+            eventEndTask = null;
         }
     }
 }

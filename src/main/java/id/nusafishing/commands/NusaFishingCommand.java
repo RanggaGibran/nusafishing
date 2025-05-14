@@ -34,8 +34,14 @@ import id.nusafishing.fishing.model.FishingRod;
 import id.nusafishing.util.ItemBuilder;
 import id.nusafishing.economy.EconomyManager;
 import id.nusafishing.gui.ShopGUI;
+import id.nusafishing.gui.EventFishCollectorGUI;
 import id.nusafishing.event.EventFish;
 import id.nusafishing.event.EventType;
+import id.nusafishing.tournament.TournamentManager;
+import id.nusafishing.tournament.model.Tournament;
+import id.nusafishing.util.TimeUtils;
+import id.nusafishing.tournament.model.TournamentType;
+
 
 public class NusaFishingCommand implements CommandExecutor, TabCompleter {
     private final NusaFishing plugin;
@@ -372,11 +378,28 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
                         if (plugin.getEventManager().isEventActive()) {
                             EventType activeEventType = plugin.getEventManager().getActiveEventType();
                             int timeRemaining = plugin.getEventManager().getEventTimeRemaining();
+                            int eventDuration = plugin.getConfig().getInt("events.duration_minutes", 30) * 60;
+                            int timeElapsed = eventDuration - timeRemaining;
+                            
+                            // Calculate current chance
+                            double baseChance = 0.01; // 1%
+                            double maxChance = 0.10;  // 10%
+                            double progressFactor = Math.min(1.0, timeElapsed / (double)eventDuration);
+                            double currentChance = baseChance + progressFactor * (maxChance - baseChance);
+                            
+                            // Add skill bonus
+                            if (sender instanceof Player) {
+                                Player player = (Player) sender;
+                                int fishingLevel = plugin.getSkillManager().getFishingLevel(player);
+                                double skillBonus = fishingLevel * 0.001; // 0.1% per level
+                                currentChance += skillBonus;
+                            }
                             
                             sender.sendMessage("§6§l=== Info Event ===");
                             sender.sendMessage("§fEvent aktif: §e" + activeEventType.getDisplayName());
                             sender.sendMessage("§fDeskripsi: §7" + activeEventType.getDescription());
                             sender.sendMessage("§fWaktu tersisa: §e" + formatTime(timeRemaining));
+                            sender.sendMessage("§fPersentase peluang saat ini: §e" + String.format("%.2f%%", currentChance * 100));
                         } else {
                             sender.sendMessage("§cTidak ada event yang sedang berlangsung.");
                         }
@@ -387,6 +410,69 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
                 }
                 
                 return true;
+                
+            case "collector":
+            case "kolektor":
+                // Check permissions
+                if (!sender.hasPermission("nusafishing.collector")) {
+                    sender.sendMessage("§cKamu tidak memiliki izin untuk menggunakan perintah ini!");
+                    return true;
+                }
+                
+                // Make sure it's a player
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage("§cPerintah ini hanya dapat digunakan oleh pemain!");
+                    return true;
+                }
+                
+                // Open the collector GUI
+                new EventFishCollectorGUI((Player) sender, plugin).open();
+                return true;
+                
+            case "tournament":
+            case "turnamen":
+                if (args.length < 2) {
+                    sendTournamentHelp(sender);
+                    return true;
+                }
+                
+                String tournamentSubCommand = args[1].toLowerCase();
+                switch (tournamentSubCommand) {
+                    case "start":
+                        if (!sender.hasPermission("nusafishing.admin.tournament")) {
+                            sender.sendMessage("§cAnda tidak memiliki izin untuk menjalankan perintah ini.");
+                            return true;
+                        }
+                        return startTournament(sender, args.length > 2 ? args[2] : null);
+                        
+                    case "end":
+                        if (!sender.hasPermission("nusafishing.admin.tournament")) {
+                            sender.sendMessage("§cAnda tidak memiliki izin untuk menjalankan perintah ini.");
+                            return true;
+                        }
+                        return endTournament(sender);
+                        
+                    case "join":
+                        if (!(sender instanceof Player)) {
+                            sender.sendMessage("§cPerintah ini hanya dapat digunakan oleh pemain.");
+                            return true;
+                        }
+                        return joinTournament((Player) sender);
+                        
+                    case "leaderboard":
+                    case "lb":
+                        return showTournamentLeaderboard(sender);
+                        
+                    case "info":
+                        return showTournamentInfo(sender);
+                        
+                    case "schedule":
+                        return showTournamentSchedule(sender);
+                        
+                    default:
+                        sendTournamentHelp(sender);
+                        return true;
+                }
                 
             default:
                 sender.sendMessage("§cCommand tidak valid! Gunakan /nusafishing help untuk bantuan.");
@@ -466,6 +552,9 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
         // Save and reload
         plugin.getConfigManager().saveConfig();
         fishingManager.reloadConfig();
+        
+        // Give rewards for location creation
+        plugin.getRewardsManager().giveLocationCreationRewards(player, locationId, name, radius, centerX, centerZ);
         
         player.sendMessage("§aLokasi memancing spesial '§b" + name + "§a' (ID: " + locationId + ") berhasil dibuat!");
         player.sendMessage("§7Pusat: X: " + centerX + ", Z: " + centerZ + ", Radius: " + radius);
@@ -673,22 +762,23 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
             return false;
         }
         
-        // Calculate repair cost
+        // Calculate tier-based repair cost
         EconomyManager economy = plugin.getEconomyManager();
-        double repairCost = economy.getRepairCost(durabilityLost);
+        double repairCost = economy.getRepairCost(durabilityLost, rod.getTier());
         
         // Check if economy is enabled and player has enough money
         if (economy.isEconomyEnabled()) {
             if (!economy.hasMoney(player, repairCost)) {
                 player.sendMessage("§cKamu tidak memiliki cukup uang untuk memperbaiki pancingan ini!");
-                player.sendMessage("§cBiaya perbaikan: §f" + economy.formatMoney(repairCost));
+                player.sendMessage("§cBiaya perbaikan: §f" + economy.formatMoney(repairCost) + 
+                        " §7(Tier " + rod.getTier().getDisplayName() + ")");
                 return false;
             }
             
             // Charge the player
             economy.withdrawMoney(player, repairCost);
             player.sendMessage("§aKamu membayar §f" + economy.formatMoney(repairCost) + 
-                    " §auntuk memperbaiki pancingan.");
+                    " §auntuk memperbaiki pancingan §f" + rod.getTier().getColor() + rod.getName());
         }
         
         // Try to repair the rod
@@ -863,8 +953,11 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
         
         if (args.length == 1) {
             // Main subcommands
-            List<String> subCommands = new ArrayList<>(Arrays.asList("help", "rod", "bait", "repair"));
-            
+            List<String> subCommands = new ArrayList<>(Arrays.asList("help", "rod", "bait", "repair",
+                    "location", "event", "collector", "sell", "shop", "tournament"));
+            if (sender.hasPermission("nusafishing.collector")) {
+                subCommands.add("collector");
+            }
             if (sender.hasPermission("nusafishing.sell")) {
                 subCommands.add("sell");
             }
@@ -892,6 +985,19 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
                 return Arrays.asList("start", "stop", "info").stream()
                        .filter(s -> s.startsWith(args[1].toLowerCase()))
                        .collect(Collectors.toList());
+            } else if (args[0].equalsIgnoreCase("tournament")) {
+                List<String> options = new ArrayList<>();
+                options.add("join");
+                options.add("info");
+                options.add("leaderboard");
+                options.add("schedule");
+                
+                if (sender.hasPermission("nusafishing.admin.tournament")) {
+                    options.add("start");
+                    options.add("end");
+                }
+                
+                return filterCompletions(options, args[1]);
             }
             // Rest of the tab completion logic
         } else if (args.length == 3 && args[0].equalsIgnoreCase("event") && args[1].equalsIgnoreCase("start")) {
@@ -899,9 +1005,32 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
                    .map(Enum::name)
                    .filter(s -> s.startsWith(args[2].toUpperCase()))
                    .collect(Collectors.toList());
+        } else if (args.length == 3 && args[0].equalsIgnoreCase("tournament") && 
+                args[1].equalsIgnoreCase("start") && 
+                sender.hasPermission("nusafishing.admin.tournament")) {
+            return filterCompletions(
+                    new ArrayList<>(plugin.getTournamentManager().getScheduledTournaments().keySet()),
+                    args[2]);
         }
         
         return completions;
+    }
+    
+    /**
+     * Filter tab completion options based on the current input
+     * @param options List of all possible options
+     * @param input Current user input to filter by
+     * @return Filtered list of options that match the input
+     */
+    private List<String> filterCompletions(List<String> options, String input) {
+        if (input.isEmpty()) {
+            return options;
+        }
+        
+        String lowercaseInput = input.toLowerCase();
+        return options.stream()
+                .filter(option -> option.toLowerCase().startsWith(lowercaseInput))
+                .collect(Collectors.toList());
     }
     
     /**
@@ -913,5 +1042,203 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
         int minutes = seconds / 60;
         int secs = seconds % 60;
         return String.format("%02d:%02d", minutes, secs);
+    }
+    
+    /**
+     * Kirim bantuan perintah turnamen ke pengirim
+     * @param sender Pengirim perintah
+     */
+    private void sendTournamentHelp(CommandSender sender) {
+        sender.sendMessage("§e§l=== Perintah Turnamen NusaFishing ===");
+        sender.sendMessage("§f/nf tournament join §7- Bergabung dengan turnamen aktif");
+        sender.sendMessage("§f/nf tournament info §7- Lihat info turnamen aktif");
+        sender.sendMessage("§f/nf tournament leaderboard §7- Lihat leaderboard turnamen");
+        sender.sendMessage("§f/nf tournament schedule §7- Lihat jadwal turnamen");
+        
+        if (sender.hasPermission("nusafishing.admin.tournament")) {
+            sender.sendMessage("§6§l=== Perintah Admin ===");
+            sender.sendMessage("§f/nf tournament start [id] §7- Mulai turnamen");
+            sender.sendMessage("§f/nf tournament end §7- Akhiri turnamen");
+        }
+    }
+    
+    /**
+     * Mulai turnamen
+     * @param sender Pengirim perintah
+     * @param tournamentId ID turnamen yang akan dimulai (opsional)
+     * @return true jika perintah berhasil
+     */
+    private boolean startTournament(CommandSender sender, String tournamentId) {
+        if (plugin.getTournamentManager().isTournamentActive()) {
+            sender.sendMessage("§c§l[TURNAMEN] §fAda turnamen yang sedang berlangsung. Akhiri dulu dengan /nf tournament end");
+            return true;
+        }
+        
+        // Jika ID tidak diberikan, gunakan turnamen default
+        if (tournamentId == null) {
+            // Buat turnamen instan dengan durasi 30 menit
+            Tournament tournament = new Tournament(
+                    "instant_tournament", 
+                    "Turnamen Instan", 
+                    "Turnamen cepat yang dibuat oleh admin", 
+                    TournamentType.HEAVIEST_FISH, 
+                    30);
+            
+            // Set hadiah default
+            tournament.addReward("first_place", 10000, 500, null);
+            tournament.addReward("second_place", 5000, 300, null);
+            tournament.addReward("third_place", 2500, 150, null);
+            
+            boolean started = plugin.getTournamentManager().startTournament(tournament);
+            if (started) {
+                sender.sendMessage("§a§l[TURNAMEN] §fTurnamen instan berhasil dimulai!");
+            } else {
+                sender.sendMessage("§c§l[TURNAMEN] §fGagal memulai turnamen.");
+            }
+            return true;
+        } else {
+            // Coba cari turnamen dengan ID yang diberikan
+            Tournament tournament = plugin.getTournamentManager().getScheduledTournaments().get(tournamentId);
+            if (tournament == null) {
+                sender.sendMessage("§c§l[TURNAMEN] §fTurnamen dengan ID '" + tournamentId + "' tidak ditemukan.");
+                sender.sendMessage("§c§l[TURNAMEN] §fID turnamen yang tersedia: " + 
+                        String.join(", ", plugin.getTournamentManager().getScheduledTournaments().keySet()));
+                return true;
+            }
+            
+            boolean started = plugin.getTournamentManager().startTournament(tournament);
+            if (started) {
+                sender.sendMessage("§a§l[TURNAMEN] §fTurnamen '" + tournament.getName() + "' berhasil dimulai!");
+            } else {
+                sender.sendMessage("§c§l[TURNAMEN] §fGagal memulai turnamen.");
+            }
+            return true;
+        }
+    }
+    
+    /**
+     * Akhiri turnamen yang sedang berlangsung
+     * @param sender Pengirim perintah
+     * @return true jika perintah berhasil
+     */
+    private boolean endTournament(CommandSender sender) {
+        if (!plugin.getTournamentManager().isTournamentActive()) {
+            sender.sendMessage("§c§l[TURNAMEN] §fTidak ada turnamen yang sedang berlangsung.");
+            return true;
+        }
+        
+        plugin.getTournamentManager().endTournament();
+        sender.sendMessage("§a§l[TURNAMEN] §fTurnamen telah diakhiri.");
+        return true;
+    }
+    
+    /**
+     * Bergabung dengan turnamen aktif
+     * @param player Pemain yang ingin bergabung
+     * @return true jika perintah berhasil
+     */
+    private boolean joinTournament(Player player) {
+        return plugin.getTournamentManager().joinTournament(player);
+    }
+    
+    /**
+     * Tampilkan leaderboard turnamen
+     * @param sender Pengirim perintah
+     * @return true jika perintah berhasil
+     */
+    private boolean showTournamentLeaderboard(CommandSender sender) {
+        if (!plugin.getTournamentManager().isTournamentActive()) {
+            sender.sendMessage("§c§l[TURNAMEN] §fTidak ada turnamen yang sedang berlangsung.");
+            return true;
+        }
+        
+        // Tampilkan leaderboard sementara
+        plugin.getTournamentManager().broadcastLeaderboard(false);
+        return true;
+    }
+    
+    /**
+     * Tampilkan info turnamen aktif
+     * @param sender Pengirim perintah
+     * @return true jika perintah berhasil
+     */
+    private boolean showTournamentInfo(CommandSender sender) {
+        if (!plugin.getTournamentManager().isTournamentActive()) {
+            sender.sendMessage("§c§l[TURNAMEN] §fTidak ada turnamen yang sedang berlangsung.");
+            return true;
+        }
+        
+        Tournament tournament = plugin.getTournamentManager().getActiveTournament();
+        if (tournament == null) {
+            sender.sendMessage("§c§l[TURNAMEN] §fTerjadi kesalahan saat mendapatkan informasi turnamen.");
+            return true;
+        }
+        
+        // Hitung waktu tersisa
+        long timeRemaining = (tournament.getEndTime() - System.currentTimeMillis()) / 1000;
+        
+        // Format tipe turnamen
+        String type;
+        switch (tournament.getType()) {
+            case MOST_FISH: type = "Ikan Terbanyak"; break;
+            case HEAVIEST_FISH: type = "Ikan Terberat"; break;
+            case HIGHEST_QUALITY: type = "Kualitas Tertinggi"; break;
+            case TOTAL_WEIGHT: type = "Berat Total"; break;
+            case SPECIFIC_SPECIES: type = "Spesies Tertentu"; break;
+            default: type = tournament.getType().toString(); break;
+        }
+        
+        // Kirim info
+        sender.sendMessage("§e§l=== Informasi Turnamen ===");
+        sender.sendMessage("§fNama: §b" + tournament.getName());
+        sender.sendMessage("§fDeskripsi: §7" + tournament.getDescription());
+        sender.sendMessage("§fTipe: §b" + type);
+        sender.sendMessage("§fDurasi: §b" + tournament.getDurationMinutes() + " menit");
+        sender.sendMessage("§fWaktu tersisa: §b" + TimeUtils.formatTime((int) timeRemaining));
+        sender.sendMessage("§7Gunakan /nf tournament join untuk berpartisipasi!");
+        
+        return true;
+    }
+    
+    /**
+     * Tampilkan jadwal turnamen
+     * @param sender Pengirim perintah
+     * @return true jika perintah berhasil
+     */
+    private boolean showTournamentSchedule(CommandSender sender) {
+        Map<String, Tournament> scheduledTournaments = plugin.getTournamentManager().getScheduledTournaments();
+        
+        if (scheduledTournaments.isEmpty()) {
+            sender.sendMessage("§c§l[TURNAMEN] §fTidak ada turnamen terjadwal.");
+            return true;
+        }
+        
+        sender.sendMessage("§e§l=== Jadwal Turnamen ===");
+        for (Map.Entry<String, Tournament> entry : scheduledTournaments.entrySet()) {
+            Tournament tournament = entry.getValue();
+            
+            // Format tipe turnamen
+            String type;
+            switch (tournament.getType()) {
+                case MOST_FISH: type = "Ikan Terbanyak"; break;
+                case HEAVIEST_FISH: type = "Ikan Terberat"; break;
+                case HIGHEST_QUALITY: type = "Kualitas Tertinggi"; break;
+                case TOTAL_WEIGHT: type = "Berat Total"; break;
+                case SPECIFIC_SPECIES: type = "Spesies Tertentu"; break;
+                default: type = tournament.getType().toString(); break;
+            }
+            
+            // Format jadwal
+            String schedule = tournament.getHourOfDay() + ":" + 
+                    String.format("%02d", tournament.getMinuteOfHour());
+            String days = String.join(", ", tournament.getDaysOfWeek());
+            
+            sender.sendMessage("§b" + tournament.getName() + " §7(" + type + ")");
+            sender.sendMessage("  §7Jadwal: §f" + schedule + " pada " + days);
+            sender.sendMessage("  §7Durasi: §f" + tournament.getDurationMinutes() + " menit");
+            sender.sendMessage("");
+        }
+        
+        return true;
     }
 }

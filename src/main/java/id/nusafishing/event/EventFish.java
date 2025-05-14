@@ -14,7 +14,7 @@ public enum EventFish {
         4001, 
         5000.0, 15000.0, 
         90, 100, 
-        10000.0, 
+        200000.0, 
         CustomFish.FishTier.LEGENDARY
     ),
     
@@ -26,7 +26,7 @@ public enum EventFish {
         4002, 
         4000.0, 12000.0, 
         85, 100, 
-        8000.0, 
+        180000.0, 
         CustomFish.FishTier.LEGENDARY
     ),
     
@@ -39,7 +39,7 @@ public enum EventFish {
         4003, 
         2000.0, 7000.0, 
         90, 100, 
-        5000.0, 
+        150000.0, 
         CustomFish.FishTier.LEGENDARY
     ),
     
@@ -51,7 +51,7 @@ public enum EventFish {
         4004, 
         3000.0, 9000.0, 
         85, 100, 
-        6000.0, 
+        160000.0, 
         CustomFish.FishTier.LEGENDARY
     ),
     
@@ -64,7 +64,7 @@ public enum EventFish {
         4005, 
         1500.0, 5000.0, 
         85, 100, 
-        4000.0, 
+        140000.0, 
         CustomFish.FishTier.LEGENDARY
     ),
     
@@ -76,7 +76,7 @@ public enum EventFish {
         4006, 
         2000.0, 6000.0, 
         80, 100, 
-        4500.0, 
+        145000.0, 
         CustomFish.FishTier.LEGENDARY
     ),
     
@@ -89,7 +89,7 @@ public enum EventFish {
         4007, 
         800.0, 3000.0, 
         85, 100, 
-        3000.0, 
+        130000.0, 
         CustomFish.FishTier.LEGENDARY
     ),
     
@@ -101,7 +101,7 @@ public enum EventFish {
         4008, 
         1000.0, 3500.0, 
         85, 100, 
-        3500.0, 
+        135000.0, 
         CustomFish.FishTier.LEGENDARY
     ),
     
@@ -114,7 +114,7 @@ public enum EventFish {
         4009, 
         100.0, 500.0, 
         95, 100, 
-        2000.0, 
+        200000.0, 
         CustomFish.FishTier.LEGENDARY
     ),
     
@@ -126,7 +126,7 @@ public enum EventFish {
         4010, 
         200.0, 800.0, 
         90, 100, 
-        2500.0, 
+        190000.0, 
         CustomFish.FishTier.LEGENDARY
     ),
     
@@ -139,7 +139,7 @@ public enum EventFish {
         4011, 
         500.0, 2000.0, 
         85, 100, 
-        3000.0, 
+        170000.0, 
         CustomFish.FishTier.LEGENDARY
     ),
     
@@ -151,7 +151,7 @@ public enum EventFish {
         4012, 
         400.0, 1500.0, 
         80, 100, 
-        2800.0, 
+        165000.0, 
         CustomFish.FishTier.LEGENDARY
     );
     
@@ -188,10 +188,15 @@ public enum EventFish {
      * @return A new CustomFish instance
      */
     public CustomFish createCustomFish() {
-        return new CustomFish(
+        // Create base fish
+        CustomFish fish = new CustomFish(
             id, name, description, material, modelData,
             minWeight, maxWeight, minQuality, maxQuality,
             basePrice, tier
         );
+        
+        // Generate an actual caught instance with proper weight/quality
+        // We need to apply tier boost, quality boost, etc. just like regular fish
+        return fish.createCaughtInstance(2, 1.5, 1.5);
     }
 }

@@ -2,6 +2,15 @@
 
 # Economy settings
 economy:
+  # Base cost for repairing 1 durability point
+  repair_cost_per_durability: 5.0
+  # Tier-based repair cost multipliers
+  repair_cost_multipliers:
+    BASIC: 1.0
+    INTERMEDIATE: 1.5
+    ADVANCED: 2.5
+    EXPERT: 4.0
+    MASTER: 6.0
   # Cost for repairing 1 durability point
   repair_cost_per_durability: 5.0  # Dari 2.0 → 5.0 (2.5x lipat)
   # Fish price multiplier (1.0 = normal price)
@@ -50,3 +59,111 @@ events:
     - FROZEN_RIVER
     - BEACH
     - SNOWY_BEACH
+
+# Event fish configuration
+event_fish:
+  event_ancient_leviathan:
+    name: "Leviathan Kuno"
+    description: "Predator tertua yang pernah berenang di lautan primordial"
+    material: PUFFERFISH
+    custom_model_data: 4001
+    min_weight: 5000.0
+    max_weight: 15000.0
+    min_quality: 90
+    max_quality: 100
+    base_price: 200000.0
+    tier: LEGENDARY
+    event_types: [LEVIATHAN_HUNT]
+    
+  event_kraken_king:
+    name: "Raja Kraken"
+    description: "Penguasa lautan dalam dengan tentakel yang dapat meremukkan kapal"
+    material: PUFFERFISH
+    custom_model_data: 4002
+    min_weight: 4000.0
+    max_weight: 12000.0
+    min_quality: 85
+    max_quality: 100
+    base_price: 180000.0
+    tier: LEGENDARY
+    event_types: [LEVIATHAN_HUNT]
+    
+  event_poseidon_wrath:
+    name: "Murka Poseidon"
+    description: "Ikan yang dikatakan sebagai utusan dewa laut"
+    material: PUFFERFISH
+    custom_model_data: 4003
+    min_weight: 2000.0
+    max_weight: 7000.0
+    min_quality: 90
+    max_quality: 100
+    base_price: 150000.0
+    tier: LEGENDARY
+    event_types: [ANCIENT_GUARDIAN]
+    
+  event_atlantean_guardian:
+    name: "Penjaga Atlantis"
+    description: "Makhluk mistis yang konon menjaga reruntuhan kota yang tenggelam"
+    material: PUFFERFISH
+    custom_model_data: 4004
+    min_weight: 3000.0
+    max_weight: 9000.0
+    min_quality: 85
+    max_quality: 100
+    base_price: 160000.0
+    tier: LEGENDARY
+    event_types: [ANCIENT_GUARDIAN]
+    
+  event_abyssal_nightmare:
+    name: "Mimpi Buruk Palung"
+    description: "Makhluk dari kedalaman tergelap yang tidak pernah melihat cahaya"
+    material: PUFFERFISH
+    custom_model_data: 4005
+    min_weight: 1500.0
+    max_weight: 5000.0
+    min_quality: 85
+    max_quality: 100
+    base_price: 140000.0
+    tier: LEGENDARY
+    event_types: [ABYSSAL_HORROR]
+    
+  event_deep_one:
+    name: "Penghuni Palung"
+    description: "Makhluk kuno yang hidup di tekanan air yang dapat meremukkan tulang"
+    material: PUFFERFISH
+    custom_model_data: 4006
+    min_weight: 2000.0
+    max_weight: 6000.0
+    min_quality: 80
+    max_quality: 100
+    base_price: 145000.0
+    tier: LEGENDARY
+    event_types: [ABYSSAL_HORROR]
+    
+  # Add more event fish for other event types...
+
+  event_river_colossus:
+    name: "Kolosal Sungai"
+    description: "Ikan air tawar terbesar yang pernah ditemukan"
+    material: PUFFERFISH
+    custom_model_data: 4007
+    min_weight: 800.0
+    max_weight: 3000.0
+    min_quality: 85
+    max_quality: 100
+    base_price: 130000.0
+    tier: LEGENDARY
+    event_types: [RIVER_TITAN]
+
+  event_freshwater_behemoth:
+    name: "Behemoth Air Tawar"
+    description: "Predator ganas yang telah memakan segala yang ada di sungai selama berabad-abad"
+    material: PUFFERFISH
+    custom_model_data: 4008
+    min_weight: 1000.0
+    max_weight: 3500.0
+    min_quality: 85
+    max_quality: 100
+    base_price: 135000.0
+    tier: LEGENDARY
+    event_types: [RIVER_TITAN]
