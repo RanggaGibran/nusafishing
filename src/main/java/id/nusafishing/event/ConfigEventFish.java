@@ -170,18 +170,34 @@ public class ConfigEventFish {
         
         return fishList.get(random.nextInt(fishList.size()));
     }
+
+    /**
+     * Get an event fish configuration by ID.
+     */
+    public static ConfigEventFish getEventFish(String id) {
+        if (id == null) return null;
+        return eventFishMap.get(id);
+    }
+    
+    /**
+     * Create a CustomFish template instance from this event fish.
+     * @return A base CustomFish instance without randomized caught stats
+     */
+    public CustomFish createTemplateFish() {
+        return new CustomFish(
+            id, name, description, material, modelData,
+            textureProvider, textureId,
+            minWeight, maxWeight, minQuality, maxQuality,
+            basePrice, tier
+        );
+    }
     
     /**
      * Create a CustomFish instance from this event fish
      * @return A new CustomFish instance
      */
     public CustomFish createCustomFish() {
-        CustomFish fish = new CustomFish(
-            id, name, description, material, modelData,
-            textureProvider, textureId,
-            minWeight, maxWeight, minQuality, maxQuality,
-            basePrice, tier
-        );
+        CustomFish fish = createTemplateFish();
         return fish.createCaughtInstance(2, 1.5, 1.5);
     }
     

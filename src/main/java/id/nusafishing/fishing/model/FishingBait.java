@@ -1,6 +1,7 @@
 package id.nusafishing.fishing.model;
 
 import java.util.List;
+import java.util.Map;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -11,6 +12,9 @@ import org.bukkit.NamespacedKey;
 
 import id.nusafishing.NusaFishing;
 import id.nusafishing.compat.CustomModelDataHelper;
+import id.nusafishing.util.ItemBuilder;
+import org.bukkit.enchantments.Enchantment;
+import org.bukkit.inventory.ItemFlag;
 
 public class FishingBait {
     private String id;
@@ -65,6 +69,66 @@ public class FishingBait {
             return true;
         }
         return validFish.contains(fishId);
+    }
+
+    /**
+     * Creates an ItemStack representing this bait with given amount.
+     */
+    public ItemStack createItemStack(int amount) {
+        List<String> lore = new java.util.ArrayList<>();
+        lore.add("§8" + description);
+        lore.add("");
+        lore.add("§e§l✦ Efek Umpan:");
+        lore.add("  §7• Daya tarik: §a+" + (int)((attractionModifier - 1.0) * 100) + "%");
+        lore.add("  §7• Boost kualitas: §a+" + (int)((qualityBoost - 1.0) * 100) + "%");
+        lore.add("  §7• Boost berat: §a+" + (int)((weightBoost - 1.0) * 100) + "%"); 
+        lore.add("  §7• Tier boost: §a+" + (tierBoost * 2) + " §7tingkat");
+        lore.add("");
+        lore.add("§b§l✦ Ikan Target:");
+        lore.add("  §7" + (validFish == null || validFish.isEmpty() ? "Semua ikan" : formatFishNames(validFish)));
+        lore.add("  §7(§dBonus 10x §7untuk ikan yang sesuai)");
+        lore.add("");
+        lore.add("§7Sisa penggunaan: §e" + usesPerItem + "/" + usesPerItem);
+        lore.add("§8ID: " + id);
+
+        ItemStack baitItem = new ItemBuilder(material != null ? material : Material.WHEAT_SEEDS)
+                .name("§a" + name)
+                .lore(lore)
+                .amount(Math.max(1, amount))
+                .customModelData(customModelData)
+                .enchant(Enchantment.LUCK_OF_THE_SEA, 1)
+                .flag(ItemFlag.HIDE_ENCHANTS)
+                .flag(ItemFlag.HIDE_ATTRIBUTES)
+                .build();
+
+        ItemMeta meta = baitItem.getItemMeta();
+        if (meta != null) {
+            PersistentDataContainer container = meta.getPersistentDataContainer();
+            container.set(NamespacedKey.fromString("nusafishing:bait_id"), PersistentDataType.STRING, id);
+            container.set(NamespacedKey.fromString("nusafishing:nusafishing.bait_id"), PersistentDataType.STRING, id);
+            container.set(NamespacedKey.fromString("nusafishing:bait_uses"), PersistentDataType.INTEGER, usesPerItem);
+            baitItem.setItemMeta(meta);
+        }
+        return baitItem;
+    }
+
+    public ItemStack createItemStack() {
+        return createItemStack(1);
+    }
+
+    private String formatFishNames(List<String> fishIds) {
+        if (fishIds == null || fishIds.isEmpty()) return "Semua ikan";
+        List<String> names = new java.util.ArrayList<>();
+        if (NusaFishing.getInstance() != null && NusaFishing.getInstance().getConfigManager() != null) {
+            Map<String, CustomFish> fishes = NusaFishing.getInstance().getConfigManager().getCustomFishes();
+            for (String fid : fishIds) {
+                CustomFish f = fishes.get(fid);
+                names.add(f != null ? f.getName() : fid);
+            }
+        } else {
+            names.addAll(fishIds);
+        }
+        return String.join(", ", names);
     }
     
     /**

@@ -41,6 +41,7 @@ public class FishingManager {
         String id;
         String name;
         String description;
+        String worldName;
         double centerX;
         double centerZ;
         double radius;
@@ -49,6 +50,10 @@ public class FishingManager {
         List<String> specialFish;
         
         public boolean isInLocation(Location location) {
+            if (location == null) return false;
+            if (worldName != null && location.getWorld() != null && !location.getWorld().getName().equalsIgnoreCase(worldName)) {
+                return false;
+            }
             double dx = location.getX() - centerX;
             double dz = location.getZ() - centerZ;
             return (dx * dx + dz * dz) <= (radius * radius);
@@ -83,6 +88,7 @@ public class FishingManager {
             location.id = key;
             location.name = locationsSection.getString(key + ".name", key);
             location.description = locationsSection.getString(key + ".description", "");
+            location.worldName = locationsSection.getString(key + ".world", null);
             location.centerX = locationsSection.getDouble(key + ".center_x");
             location.centerZ = locationsSection.getDouble(key + ".center_z");
             location.radius = locationsSection.getDouble(key + ".radius", 50.0);

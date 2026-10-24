@@ -25,6 +25,7 @@ import id.nusafishing.economy.EconomyManager;
 import id.nusafishing.fishing.model.CustomFish;
 import id.nusafishing.util.ItemBuilder;
 import id.nusafishing.event.EventFish;
+import id.nusafishing.event.ConfigEventFish;
 import id.nusafishing.fishing.model.FishingBait;
 
 public class EventFishCollectorGUI extends GUI {
@@ -285,29 +286,49 @@ public class EventFishCollectorGUI extends GUI {
         }
         
         if (fishId == null) return null;
+
+        NamespacedKey cleanWeightKey = NamespacedKey.fromString("nusafishing:fish_weight");
+        NamespacedKey legacyWeightKey = new NamespacedKey(plugin, "fish_weight");
+        NamespacedKey cleanQualityKey = NamespacedKey.fromString("nusafishing:fish_quality");
+        NamespacedKey legacyQualityKey = new NamespacedKey(plugin, "fish_quality");
+        NamespacedKey cleanTierKey = NamespacedKey.fromString("nusafishing:fish_tier");
+        NamespacedKey legacyTierKey = new NamespacedKey(plugin, "fish_tier");
+
+        CustomFish templateFish = null;
         
-        // For event fish, we need special handling
-        if (fishId.startsWith("event_")) {
-            // Try to find the fish type in our EventFish enum
+        // 1. Check ConfigEventFish (from config.yml)
+        ConfigEventFish configEventFish = ConfigEventFish.getEventFish(fishId);
+        if (configEventFish != null) {
+            templateFish = configEventFish.createTemplateFish();
+        }
+
+        // 2. Check EventFish enum constants
+        if (templateFish == null && fishId.startsWith("event_")) {
+            String enumName = fishId.substring(6);
             for (EventFish eventFish : EventFish.values()) {
-                if (eventFish.name().equalsIgnoreCase(fishId.substring(6))) {
-                    // Create a CustomFish from the event fish
-                    return eventFish.createCustomFish();
+                if (eventFish.name().equalsIgnoreCase(enumName)) {
+                    templateFish = eventFish.createCustomFish();
+                    break;
                 }
             }
         }
-        
-        // For regular fish
-        CustomFish templateFish = plugin.getConfigManager().getCustomFishes().get(fishId);
+
+        // 3. Fallback to regular CustomFishes from configManager
+        if (templateFish == null) {
+            templateFish = plugin.getConfigManager().getCustomFishes().get(fishId);
+        }
+
         if (templateFish == null) return null;
-        
-        // Create a new instance
+
+        // Create new instance from template
         CustomFish fish = new CustomFish(
             templateFish.getId(), 
             templateFish.getName(), 
             templateFish.getDescription(),
             templateFish.getMaterial(),
             templateFish.getCustomModelData(),
+            templateFish.getTextureProvider(),
+            templateFish.getTextureId(),
             templateFish.getMinWeight(),
             templateFish.getMaxWeight(),
             templateFish.getMinQuality(),
@@ -315,7 +336,34 @@ public class EventFishCollectorGUI extends GUI {
             templateFish.getBasePrice(),
             templateFish.getBaseTier()
         );
-        
+
+        // Extract caught stats from ItemStack PersistentDataContainer
+        double weight = templateFish.getMinWeight();
+        if (cleanWeightKey != null && container.has(cleanWeightKey, PersistentDataType.DOUBLE)) {
+            weight = container.get(cleanWeightKey, PersistentDataType.DOUBLE);
+        } else if (container.has(legacyWeightKey, PersistentDataType.DOUBLE)) {
+            weight = container.get(legacyWeightKey, PersistentDataType.DOUBLE);
+        }
+
+        int quality = templateFish.getMinQuality();
+        if (cleanQualityKey != null && container.has(cleanQualityKey, PersistentDataType.INTEGER)) {
+            quality = container.get(cleanQualityKey, PersistentDataType.INTEGER);
+        } else if (container.has(legacyQualityKey, PersistentDataType.INTEGER)) {
+            quality = container.get(legacyQualityKey, PersistentDataType.INTEGER);
+        }
+
+        int tierOrdinal = templateFish.getBaseTier().ordinal();
+        if (cleanTierKey != null && container.has(cleanTierKey, PersistentDataType.INTEGER)) {
+            tierOrdinal = container.get(cleanTierKey, PersistentDataType.INTEGER);
+        } else if (container.has(legacyTierKey, PersistentDataType.INTEGER)) {
+            tierOrdinal = container.get(legacyTierKey, PersistentDataType.INTEGER);
+        }
+        if (tierOrdinal < 0 || tierOrdinal >= CustomFish.FishTier.values().length) {
+            tierOrdinal = templateFish.getBaseTier().ordinal();
+        }
+        CustomFish.FishTier actualTier = CustomFish.FishTier.values()[tierOrdinal];
+
+        fish.applyCaughtData(weight, quality, actualTier);
         return fish;
     }
     

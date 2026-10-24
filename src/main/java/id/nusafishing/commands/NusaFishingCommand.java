@@ -630,37 +630,8 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
             return false;
         }
         
-        // Create the bait item
-        ItemStack baitItem = new ItemBuilder(bait.getMaterial())
-                .name("§a" + bait.getName())
-                .lore("§8" + bait.getDescription())
-                .lore("")
-                .lore("§e§l✦ Efek Umpan:")
-                .lore("  §7• Daya tarik: §a+" + (int)((bait.getAttractionModifier() - 1.0) * 100) + "%")
-                .lore("  §7• Boost kualitas: §a+" + (int)((bait.getQualityBoost() - 1.0) * 100) + "%")
-                .lore("  §7• Boost berat: §a+" + (int)((bait.getWeightBoost() - 1.0) * 100) + "%") 
-                .lore("  §7• Tier boost: §a+" + (bait.getTierBoost() * 2) + " §7tingkat")
-                .lore("")
-                .lore("§b§l✦ Ikan Target:")
-                .lore("  §7" + (bait.getValidFish().isEmpty() ? "Semua ikan" : formatFishNames(bait.getValidFish())))
-                .lore("  §7(§dBonus 10x §7untuk ikan yang sesuai)")
-                .lore("")
-                .lore("§8Penggunaan: §f" + bait.getUsesPerItem() + "x")
-                .lore("§8ID: " + baitId)
-                .customModelData(bait.getCustomModelData())
-                .enchant(Enchantment.LUCK_OF_THE_SEA, 1)
-                .flag(ItemFlag.HIDE_ENCHANTS)
-                .flag(ItemFlag.HIDE_ATTRIBUTES)
-                .build();
-        
-        // Store bait ID in persistent data
-        ItemMeta meta = baitItem.getItemMeta();
-        PersistentDataContainer container = meta.getPersistentDataContainer();
-        container.set(new NamespacedKey(plugin, BAIT_ID_KEY), PersistentDataType.STRING, baitId);
-        baitItem.setItemMeta(meta);
-        
-        // Set amount and give to player
-        baitItem.setAmount(amount);
+        // Create the bait item and give to player
+        ItemStack baitItem = bait.createItemStack(amount);
         player.getInventory().addItem(baitItem);
         
         player.sendMessage("§aKamu mendapatkan §f" + amount + "x §a" + bait.getName() + "§a!");
@@ -933,22 +904,7 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
         }
         CustomFish.FishTier actualTier = CustomFish.FishTier.values()[tierOrdinal];
 
-        try {
-            java.lang.reflect.Field weightField = CustomFish.class.getDeclaredField("weight");
-            java.lang.reflect.Field qualityField = CustomFish.class.getDeclaredField("quality");
-            java.lang.reflect.Field tierField = CustomFish.class.getDeclaredField("actualTier");
-            
-            weightField.setAccessible(true);
-            qualityField.setAccessible(true);
-            tierField.setAccessible(true);
-            
-            weightField.set(fish, weight);
-            qualityField.set(fish, quality);
-            tierField.set(fish, actualTier); // Tambahkan ini untuk mengatur tier
-        } catch (Exception e) {
-            plugin.getLogger().warning("Error setting fish properties: " + e.getMessage());
-        }
-
+        fish.applyCaughtData(weight, quality, actualTier);
         return fish;
     }
     

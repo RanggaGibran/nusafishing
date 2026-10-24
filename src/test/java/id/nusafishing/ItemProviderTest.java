@@ -7,6 +7,7 @@ import id.nusafishing.compat.CompatibilityHelper;
 import id.nusafishing.compat.CustomModelDataHelper;
 import id.nusafishing.compat.PlatformHelper;
 import id.nusafishing.fishing.model.CustomFish;
+import id.nusafishing.fishing.model.FishingBait;
 import id.nusafishing.fishing.model.FishingRod;
 import id.nusafishing.integration.item.ItemProviderManager;
 import id.nusafishing.integration.item.ItemTextureProvider;
@@ -433,5 +434,40 @@ public class ItemProviderTest {
         CustomFish caught = mythicFish.createCaughtInstance(0, 1.0, 1.0);
         assertEquals(CustomFish.FishTier.MYTHIC, caught.getActualTier());
         assertTrue("Mythic price should guarantee at least 3x base price", caught.getPrice() >= 6000.0);
+    }
+
+    @Test
+    public void testBaitCreationAndPdcKeys() {
+        FishingBait bait = new FishingBait(
+                "worm", "Cacing", "Umpan", Material.WHEAT_SEEDS,
+                2001, java.util.List.of(), 2.0, 1, 5, 10.0, 1.1, 1.1
+        );
+        ItemStack baitStack = bait.createItemStack(3);
+        assertNotNull(baitStack);
+        assertEquals(3, baitStack.getAmount());
+
+        ItemMeta meta = baitStack.getItemMeta();
+        assertNotNull(meta);
+
+        NamespacedKey cleanBaitKey = NamespacedKey.fromString("nusafishing:bait_id");
+        NamespacedKey dottedBaitKey = NamespacedKey.fromString("nusafishing:nusafishing.bait_id");
+        NamespacedKey usesKey = NamespacedKey.fromString("nusafishing:bait_uses");
+
+        assertEquals("worm", meta.getPersistentDataContainer().get(cleanBaitKey, PersistentDataType.STRING));
+        assertEquals("worm", meta.getPersistentDataContainer().get(dottedBaitKey, PersistentDataType.STRING));
+        assertEquals(5, (int) meta.getPersistentDataContainer().get(usesKey, PersistentDataType.INTEGER));
+    }
+
+    @Test
+    public void testCustomFishApplyCaughtData() {
+        CustomFish fish = new CustomFish(
+                "event_ancient_leviathan", "Leviathan", "Kuno", Material.PUFFERFISH,
+                4001, 5000.0, 15000.0, 90, 100, 200000.0, CustomFish.FishTier.LEGENDARY
+        );
+        fish.applyCaughtData(12000.0, 95, CustomFish.FishTier.LEGENDARY);
+        assertEquals(12000.0, fish.getWeight(), 0.001);
+        assertEquals(95, fish.getQuality());
+        assertEquals(CustomFish.FishTier.LEGENDARY, fish.getActualTier());
+        assertTrue("Price should be calculated with actual caught weight and quality", fish.getPrice() > 100000.0);
     }
 }

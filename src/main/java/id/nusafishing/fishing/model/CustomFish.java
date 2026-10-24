@@ -340,4 +340,13 @@ public class CustomFish {
         // Never return null - fall back to base tier if actual tier is null
         return actualTier != null ? actualTier : baseTier;
     }
+
+    /**
+     * Set caught fish properties safely without requiring reflection.
+     */
+    public void applyCaughtData(double weight, int quality, FishTier actualTier) {
+        this.weight = weight;
+        this.quality = quality;
+        this.actualTier = actualTier != null ? actualTier : this.baseTier;
+    }
 }

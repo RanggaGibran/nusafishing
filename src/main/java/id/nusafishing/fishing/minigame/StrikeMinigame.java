@@ -16,6 +16,10 @@ import net.md_5.bungee.api.chat.TextComponent;
 import id.nusafishing.NusaFishing;
 import id.nusafishing.fishing.FishingListener;
 import id.nusafishing.fishing.model.CustomFish;
+import id.nusafishing.fishing.model.FishingRod;
+import org.bukkit.NamespacedKey;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
 
 public class StrikeMinigame {
     private final NusaFishing plugin;
@@ -215,9 +219,29 @@ public class StrikeMinigame {
             plugin.getSkillManager().addFishingExp(player, xpGain);
             
             // Reduce durability on successful catch
-            if (fishingRod != null && durabilityLoss != null) {
-                FishingListener.reduceDurability(player, fishingRod, durabilityLoss);
+            FishingRod customRod = null;
+            if (fishingRod != null) {
+                ItemMeta meta = fishingRod.getItemMeta();
+                if (meta != null) {
+                    NamespacedKey cleanRodKey = NamespacedKey.fromString("nusafishing:rod_id");
+                    NamespacedKey dottedRodKey = NamespacedKey.fromString("nusafishing:nusafishing.rod_id");
+                    String rodId = null;
+                    if (cleanRodKey != null && meta.getPersistentDataContainer().has(cleanRodKey, PersistentDataType.STRING)) {
+                        rodId = meta.getPersistentDataContainer().get(cleanRodKey, PersistentDataType.STRING);
+                    } else if (dottedRodKey != null && meta.getPersistentDataContainer().has(dottedRodKey, PersistentDataType.STRING)) {
+                        rodId = meta.getPersistentDataContainer().get(dottedRodKey, PersistentDataType.STRING);
+                    }
+                    if (rodId != null) {
+                        customRod = plugin.getFishingManager().getRodById(rodId);
+                    }
+                }
+                if (durabilityLoss != null) {
+                    FishingListener.reduceDurability(player, fishingRod, durabilityLoss);
+                }
             }
+
+            // Consume stamina based on fish weight
+            plugin.getStaminaManager().consumeStaminaForFish(player, fish, customRod);
         } else {
             // Fish got away
             player.playSound(player.getLocation(), Sound.ENTITY_ITEM_BREAK, 1.0f, 1.0f);

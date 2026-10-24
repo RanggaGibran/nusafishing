@@ -153,9 +153,25 @@ public class FishingListener implements Listener {
                     player.sendMessage("§aKamu menangkap §f" + fish.getName() + "§a!");
                     player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
                     
+                    // Record the catch in statistics
+                    plugin.getStatisticsManager().recordFishCaught(player.getUniqueId(), fish);
+
+                    // Check for event fish catch
                     if (fish.getId().startsWith("event_")) {
                         plugin.getEventManager().handleEventFishCaught(player, fish);
                     }
+
+                    // Record catch in active tournament
+                    if (plugin.getTournamentManager().isTournamentActive()) {
+                        plugin.getTournamentManager().recordCatch(player, fish);
+                    }
+
+                    // Add fishing XP based on fish quality and weight
+                    int xpGain = (int)(5 + (fish.getWeight() * fish.getQuality() / 20));
+                    plugin.getSkillManager().addFishingExp(player, xpGain);
+
+                    // Consume stamina based on fish weight
+                    staminaManager.consumeStaminaForFish(player, fish, null);
 
                     // TAMBAHAN: Hapus fishing hook setelah berhasil menangkap ikan
                     removePlayerFishingHook(player);

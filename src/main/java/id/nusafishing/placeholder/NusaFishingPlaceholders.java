@@ -57,6 +57,10 @@ public class NusaFishingPlaceholders extends PlaceholderExpansion {
             if (identifier.equals("legendary_caught")) {
                 return String.valueOf(statsManager.getLegendaryFishCaught(player.getUniqueId()));
             }
+
+            if (identifier.equals("mythic_caught")) {
+                return String.valueOf(statsManager.getMythicFishCaught(player.getUniqueId()));
+            }
             
             if (identifier.equals("event_fish_caught")) {
                 return String.valueOf(statsManager.getEventFishCaught(player.getUniqueId()));

@@ -461,27 +461,9 @@ public class ShopGUI extends GUI {
             }
             
             // Create the bait item
-            ItemStack baitItem = new ItemBuilder(bait.getMaterial())
-                    .name("§a" + bait.getName())
-                    .lore("§8" + bait.getDescription())
-                    .lore("")
-                    .lore("§7Daya tarik: §f+" + (int)((bait.getAttractionModifier() - 1.0) * 100) + "%")
-                    .lore("§7Cocok untuk: §f" + formatFishNames(bait.getValidFish()))
-                    .lore("")
-                    .lore("§8ID: " + baitId)
-                    .customModelData(bait.getCustomModelData())
-                    .enchant(Enchantment.LUCK_OF_THE_SEA, 1)
-                    .flag(ItemFlag.HIDE_ENCHANTS)
-                    .build();
+            ItemStack baitItem = bait.createItemStack(amount);
             
-            // Store bait ID in persistent data
-            ItemMeta meta = baitItem.getItemMeta();
-            PersistentDataContainer container = meta.getPersistentDataContainer();
-            container.set(new NamespacedKey(plugin, "nusafishing.bait_id"), PersistentDataType.STRING, baitId);
-            baitItem.setItemMeta(meta);
-            
-            // Set amount and give to player
-            baitItem.setAmount(amount);
+            // Give to player
             player.getInventory().addItem(baitItem);
             
             player.sendMessage("§aKamu berhasil membeli §f" + amount + "x §a" + bait.getName() + "§a!");
@@ -675,23 +657,7 @@ public class ShopGUI extends GUI {
         }
         CustomFish.FishTier actualTier = CustomFish.FishTier.values()[tierOrdinal];
         
-        // Gunakan reflection untuk mengatur properti fish
-        try {
-            java.lang.reflect.Field weightField = CustomFish.class.getDeclaredField("weight");
-            java.lang.reflect.Field qualityField = CustomFish.class.getDeclaredField("quality");
-            java.lang.reflect.Field tierField = CustomFish.class.getDeclaredField("actualTier");
-            
-            weightField.setAccessible(true);
-            qualityField.setAccessible(true);
-            tierField.setAccessible(true);
-            
-            weightField.set(fish, weight);
-            qualityField.set(fish, quality);
-            tierField.set(fish, actualTier); // Tambahkan ini untuk mengatur tier
-        } catch (Exception e) {
-            plugin.getLogger().warning("Error setting fish properties: " + e.getMessage());
-        }
-        
+        fish.applyCaughtData(weight, quality, actualTier);
         return fish;
     }
     

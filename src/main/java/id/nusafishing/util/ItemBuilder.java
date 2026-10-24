@@ -62,6 +62,11 @@ public class ItemBuilder {
         meta.setUnbreakable(unbreakable);
         return this;
     }
+
+    public ItemBuilder amount(int amount) {
+        item.setAmount(amount);
+        return this;
+    }
     
     public ItemBuilder customModelData(int data) {
         if (data > 0 && meta != null) {
