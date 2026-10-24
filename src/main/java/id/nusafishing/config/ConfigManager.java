@@ -69,6 +69,14 @@ public class ConfigManager {
                 boolean hasSpecialAbility = rodsSection.getBoolean(key + ".special_ability", false);
                 String abilityDescription = rodsSection.getString(key + ".ability_description", "");
                 
+                String materialName = rodsSection.getString(key + ".material", "FISHING_ROD");
+                Material material = Material.getMaterial(materialName != null ? materialName.toUpperCase() : "FISHING_ROD");
+                if (material == null) {
+                    material = Material.FISHING_ROD;
+                }
+                String textureProvider = rodsSection.getString(key + ".texture_provider", "vanilla");
+                String textureId = rodsSection.getString(key + ".texture_id", null);
+
                 // Baca price dan lure_level
                 double price = rodsSection.getDouble(key + ".price", -1); // Default -1 berarti gunakan kalkulasi
                 int lureLevel = rodsSection.getInt(key + ".lure_level", tier.ordinal() + 1); // Default berdasarkan tier
@@ -84,7 +92,8 @@ public class ConfigManager {
                             default -> 25.0;
                         });
                 
-                FishingRod rod = new FishingRod(key, name, description, customModelData, 
+                FishingRod rod = new FishingRod(key, name, description, material, customModelData, 
+                                              textureProvider, textureId,
                                               durability, staminaModifier, tier,
                                               hasSpecialAbility, abilityDescription,
                                               price, lureLevel, maxWeightCapacity);

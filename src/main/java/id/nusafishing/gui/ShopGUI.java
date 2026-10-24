@@ -130,22 +130,7 @@ public class ShopGUI extends GUI {
             FishingRod rod = availableRods.get(i);
             double price = calculateRodPrice(rod);
             
-            ItemStack rodItem = new ItemBuilder(Material.FISHING_ROD)
-                    .name("§b" + rod.getName())
-                    .lore("§8" + rod.getDescription())
-                    .lore("")
-                    .lore("§7Ketahanan: §f" + rod.getDurability())
-                    .lore("§7Stamina: §f" + (rod.getStaminaModifier() < 1.0 ? 
-                            "-" + (int)((1.0 - rod.getStaminaModifier()) * 100) + "%" : 
-                            "+" + (int)((rod.getStaminaModifier() - 1.0) * 100) + "%"))
-                    .lore("")
-                    .lore("§7Harga: §f" + economy.formatMoney(price))
-                    .lore("")
-                    .lore(economy.hasMoney(player, price) ? 
-                            "§a► Klik untuk membeli" : "§c✘ Uang tidak cukup")
-                    .customModelData(rod.getCustomModelData())
-                    .flag(ItemFlag.HIDE_ATTRIBUTES)
-                    .build();
+            ItemStack rodItem = rod.createDisplayItem(price, economy.hasMoney(player, price));
             
             // Add to inventory with click handler that buys the rod
             setItem(slot, rodItem, () -> {
@@ -445,34 +430,7 @@ public class ShopGUI extends GUI {
             }
             
             // Create the fishing rod item
-            ItemStack rodItem = new ItemBuilder(Material.FISHING_ROD)
-                    .name(rod.getTier().getColor() + rod.getName() + " §7[" + rod.getTier().getDisplayName() + "]")
-                    .lore("§8" + rod.getDescription())
-                    .lore("")
-                    .lore("§7Ketahanan: §f" + rod.getDurability() + "/" + rod.getDurability())
-                    .lore("§7Stamina: §f" + (rod.getStaminaModifier() < 1.0 ? 
-                            "-" + (int)((1.0 - rod.getStaminaModifier()) * 100) + "%" : 
-                            "+" + (int)((rod.getStaminaModifier() - 1.0) * 100) + "%"))
-                    .lore("§7Tier: " + rod.getTier().getColor() + rod.getTier().getDisplayName())
-                    .lore("§7Quality Boost: §f+" + (int)((rod.getQualityBoost() - 1.0) * 100) + "%")
-                    .lore("§7Lure: §f" + rod.getLureLevel()) // Tambahkan info Lure level
-                    .lore("")
-                    .lore(rod.hasSpecialAbility() ? "§e✦ " + rod.getSpecialAbilityDescription() : "")
-                    .lore("")
-                    .lore("§8ID: " + rodId)
-                    .customModelData(rod.getCustomModelData())
-                    .enchant(Enchantment.LUCK_OF_THE_SEA, 1)
-                    .enchant(Enchantment.LURE, rod.getLureLevel()) // Tambahkan enchantment Lure
-                    .flag(ItemFlag.HIDE_ENCHANTS)
-                    .flag(ItemFlag.HIDE_ATTRIBUTES)
-                    .build();
-            
-            // Store rod ID and durability in persistent data
-            ItemMeta meta = rodItem.getItemMeta();
-            PersistentDataContainer container = meta.getPersistentDataContainer();
-            container.set(new NamespacedKey(plugin, "nusafishing.rod_id"), PersistentDataType.STRING, rodId);
-            container.set(new NamespacedKey(plugin, "nusafishing.durability"), PersistentDataType.INTEGER, rod.getDurability());
-            rodItem.setItemMeta(meta);
+            ItemStack rodItem = rod.createItemStack();
             
             // Give to player
             player.getInventory().addItem(rodItem);
@@ -546,19 +504,31 @@ public class ShopGUI extends GUI {
      */
     private void sellFish(int itemIndex, ItemStack fishItem, CustomFish fish, double unitPrice) {
         int amount = fishItem.getAmount();
-        double totalPrice = unitPrice * amount;
         
         // Remove the item from the player's inventory
-        player.getInventory().removeItem(fishItem);
+        Map<Integer, ItemStack> notRemoved = player.getInventory().removeItem(fishItem);
+        int removedAmount = amount;
+        if (!notRemoved.isEmpty()) {
+            for (ItemStack leftover : notRemoved.values()) {
+                removedAmount -= leftover.getAmount();
+            }
+        }
+        
+        if (removedAmount <= 0) {
+            player.sendMessage("§cIkan tidak ditemukan di inventory kamu!");
+            return;
+        }
+
+        double totalPrice = unitPrice * removedAmount;
         
         // Add money to the player
         economy.depositMoney(player, totalPrice);
         
         // Update dynamic price for this fish
-        economy.updateDynamicPrice(fish.getId(), amount);
+        economy.updateDynamicPrice(fish.getId(), removedAmount);
         
         // Notify the player
-        player.sendMessage("§aKamu menjual " + amount + "x " + fish.getName() + " seharga " 
+        player.sendMessage("§aKamu menjual " + removedAmount + "x " + fish.getName() + " seharga " 
                 + economy.formatMoney(totalPrice));
         
         // Refresh the inventory
@@ -569,7 +539,7 @@ public class ShopGUI extends GUI {
      * Sell all fish in the player's inventory
      */
     private void sellAllFish() {
-        ItemStack[] contents = player.getInventory().getContents();
+        ItemStack[] contents = player.getInventory().getStorageContents();
         Map<String, Integer> fishSold = new HashMap<>();
         double totalEarnings = 0;
         int totalFishSold = 0;
@@ -634,18 +604,29 @@ public class ShopGUI extends GUI {
     private CustomFish getFishFromItem(ItemStack item) {
         if (item == null) return null;
         
-        // Check if it's a fish by checking custom model data
         ItemMeta meta = item.getItemMeta();
-        if (meta == null || !meta.hasCustomModelData()) return null;
+        if (meta == null) return null;
         
         PersistentDataContainer container = meta.getPersistentDataContainer();
-        NamespacedKey fishIdKey = new NamespacedKey(plugin, "fish_id");
-        NamespacedKey weightKey = new NamespacedKey(plugin, "fish_weight");
-        NamespacedKey qualityKey = new NamespacedKey(plugin, "fish_quality");
+        NamespacedKey cleanFishIdKey = NamespacedKey.fromString("nusafishing:fish_id");
+        NamespacedKey legacyFishIdKey = new NamespacedKey(plugin, "fish_id");
         
-        if (!container.has(fishIdKey, PersistentDataType.STRING)) return null;
+        String fishId = null;
+        if (cleanFishIdKey != null && container.has(cleanFishIdKey, PersistentDataType.STRING)) {
+            fishId = container.get(cleanFishIdKey, PersistentDataType.STRING);
+        } else if (container.has(legacyFishIdKey, PersistentDataType.STRING)) {
+            fishId = container.get(legacyFishIdKey, PersistentDataType.STRING);
+        }
         
-        String fishId = container.get(fishIdKey, PersistentDataType.STRING);
+        if (fishId == null) return null;
+        
+        NamespacedKey cleanWeightKey = NamespacedKey.fromString("nusafishing:fish_weight");
+        NamespacedKey legacyWeightKey = new NamespacedKey(plugin, "fish_weight");
+        NamespacedKey cleanQualityKey = NamespacedKey.fromString("nusafishing:fish_quality");
+        NamespacedKey legacyQualityKey = new NamespacedKey(plugin, "fish_quality");
+        NamespacedKey cleanTierKey = NamespacedKey.fromString("nusafishing:fish_tier");
+        NamespacedKey legacyTierKey = new NamespacedKey(plugin, "fish_tier");
+        
         CustomFish templateFish = plugin.getConfigManager().getCustomFishes().get(fishId);
         
         if (templateFish == null) return null;
@@ -657,6 +638,8 @@ public class ShopGUI extends GUI {
             templateFish.getDescription(),
             templateFish.getMaterial(),
             templateFish.getCustomModelData(),
+            templateFish.getTextureProvider(),
+            templateFish.getTextureId(),
             templateFish.getMinWeight(),
             templateFish.getMaxWeight(),
             templateFish.getMinQuality(),
@@ -666,12 +649,27 @@ public class ShopGUI extends GUI {
         );
         
         // Set nilai berat dan kualitas dari data yang tersimpan
-        double weight = container.getOrDefault(weightKey, PersistentDataType.DOUBLE, templateFish.getMinWeight());
-        int quality = container.getOrDefault(qualityKey, PersistentDataType.INTEGER, templateFish.getMinQuality());
+        double weight = templateFish.getMinWeight();
+        if (cleanWeightKey != null && container.has(cleanWeightKey, PersistentDataType.DOUBLE)) {
+            weight = container.get(cleanWeightKey, PersistentDataType.DOUBLE);
+        } else if (container.has(legacyWeightKey, PersistentDataType.DOUBLE)) {
+            weight = container.get(legacyWeightKey, PersistentDataType.DOUBLE);
+        }
+
+        int quality = templateFish.getMinQuality();
+        if (cleanQualityKey != null && container.has(cleanQualityKey, PersistentDataType.INTEGER)) {
+            quality = container.get(cleanQualityKey, PersistentDataType.INTEGER);
+        } else if (container.has(legacyQualityKey, PersistentDataType.INTEGER)) {
+            quality = container.get(legacyQualityKey, PersistentDataType.INTEGER);
+        }
         
         // Baca data tier yang tersimpan (atau gunakan base tier jika tidak ada)
-        NamespacedKey tierKey = new NamespacedKey(plugin, "fish_tier");
-        int tierOrdinal = container.getOrDefault(tierKey, PersistentDataType.INTEGER, templateFish.getBaseTier().ordinal());
+        int tierOrdinal = templateFish.getBaseTier().ordinal();
+        if (cleanTierKey != null && container.has(cleanTierKey, PersistentDataType.INTEGER)) {
+            tierOrdinal = container.get(cleanTierKey, PersistentDataType.INTEGER);
+        } else if (container.has(legacyTierKey, PersistentDataType.INTEGER)) {
+            tierOrdinal = container.get(legacyTierKey, PersistentDataType.INTEGER);
+        }
         CustomFish.FishTier actualTier = CustomFish.FishTier.values()[tierOrdinal];
         
         // Gunakan reflection untuk mengatur properti fish

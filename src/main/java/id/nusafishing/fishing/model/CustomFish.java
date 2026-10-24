@@ -144,15 +144,7 @@ public class CustomFish {
             
             // Add tier boost with diminishing returns
             if (tierBoost > 0) {
-                tierIndex += 1;
-                
-                if (tierBoost > 1) {
-                    tierIndex += (int)(0.75);
-                }
-                
-                if (tierBoost > 2) {
-                    tierIndex += (int)(0.5);
-                }
+                tierIndex += 1 + (int) ((tierBoost - 1) * 0.5);
             }
             
             // Chance for legendary
@@ -180,6 +172,10 @@ public class CustomFish {
     
     // Get the actual price based on weight, quality, and tier
     public double getPrice() {
+        if (id != null && id.startsWith("event_")) {
+            return getEventFishPrice();
+        }
+
         // 1. Nilai dasar berdasarkan kualitas dan tier
         double qualityFactor = quality / ((double)(minQuality + maxQuality) / 2);
         double tierFactor = actualTier.getPriceMultiplier();
@@ -224,6 +220,38 @@ public class CustomFish {
         }
         
         return finalPrice;
+    }
+    
+    /**
+     * Balanced price formula for event fish with logarithmic scaling and price caps
+     */
+    private double getEventFishPrice() {
+        double baseValue = basePrice;
+        double qualityFactor = 0.5 + (Math.sqrt(quality) / 10.0);
+        double weightFactor;
+        if (weight < 100.0) {
+            weightFactor = 0.8 + (Math.log10(1 + weight) / 5.0);
+        } else if (weight < 1000.0) {
+            weightFactor = 1.0 + (Math.log10(weight / 100.0) / 3.0);
+        } else {
+            weightFactor = 1.2 + (Math.log10(weight / 1000.0) / 5.0);
+        }
+        double tierMultiplier;
+        switch (getActualTier()) {
+            case LEGENDARY: tierMultiplier = 1.5; break;
+            case EPIC: tierMultiplier = 1.3; break;
+            case RARE: tierMultiplier = 1.1; break;
+            default: tierMultiplier = 1.0;
+        }
+        double rawPrice = baseValue * qualityFactor * weightFactor * tierMultiplier;
+        double priceCap = 1000000.0;
+        if (rawPrice > priceCap) {
+            double excess = rawPrice - priceCap;
+            double cappedExcess = Math.sqrt(excess) * 1000;
+            rawPrice = priceCap + cappedExcess;
+            rawPrice = Math.min(rawPrice, 2000000.0);
+        }
+        return rawPrice;
     }
     
     // Tambahkan method baru untuk format berat:

@@ -120,7 +120,7 @@ public class FishingManager {
     }
     
     /**
-     * Get a bait by its custom model data
+     * Get a bait by its persistent data or custom model data
      * @param item The item to check for bait properties
      * @return The matching FishingBait, or null if not a bait
      */
@@ -130,16 +130,40 @@ public class FishingManager {
         }
         
         ItemMeta meta = item.getItemMeta();
-        if (meta == null || !meta.hasCustomModelData()) {
+        if (meta == null) {
             return null;
         }
         
-        int modelData = meta.getCustomModelData();
-        
-        for (FishingBait bait : configManager.getFishingBaits().values()) {
-            if (bait.getMaterial() == item.getType() && 
-                bait.getCustomModelData() == modelData) {
+        // Check PersistentDataContainer first
+        org.bukkit.persistence.PersistentDataContainer container = meta.getPersistentDataContainer();
+        org.bukkit.NamespacedKey cleanKey = org.bukkit.NamespacedKey.fromString("nusafishing:bait_id");
+        org.bukkit.NamespacedKey dottedKey = new org.bukkit.NamespacedKey(plugin, "nusafishing.bait_id");
+        org.bukkit.NamespacedKey simpleKey = new org.bukkit.NamespacedKey(plugin, "bait_id");
+
+        String baitId = null;
+        if (cleanKey != null && container.has(cleanKey, org.bukkit.persistence.PersistentDataType.STRING)) {
+            baitId = container.get(cleanKey, org.bukkit.persistence.PersistentDataType.STRING);
+        } else if (container.has(dottedKey, org.bukkit.persistence.PersistentDataType.STRING)) {
+            baitId = container.get(dottedKey, org.bukkit.persistence.PersistentDataType.STRING);
+        } else if (container.has(simpleKey, org.bukkit.persistence.PersistentDataType.STRING)) {
+            baitId = container.get(simpleKey, org.bukkit.persistence.PersistentDataType.STRING);
+        }
+
+        if (baitId != null) {
+            FishingBait bait = configManager.getFishingBaits().get(baitId);
+            if (bait != null) {
                 return bait;
+            }
+        }
+        
+        // Fallback: Check custom model data using compatibility helper
+        int modelData = id.nusafishing.compat.CustomModelDataHelper.getCustomModelData(meta);
+        if (modelData > 0) {
+            for (FishingBait bait : configManager.getFishingBaits().values()) {
+                if (bait.getMaterial() == item.getType() && 
+                    bait.getCustomModelData() == modelData) {
+                    return bait;
+                }
             }
         }
         
@@ -180,6 +204,17 @@ public class FishingManager {
      * @return The event fish if one can be caught, otherwise null
      */
     public CustomFish checkForEventFish(Player player, Location location) {
+        return checkForEventFish(player, location, null);
+    }
+
+    /**
+     * Check if an event fish can be caught with explicit active bait
+     * @param player The player fishing
+     * @param location The fishing location
+     * @param bait The active bait being used (or null to search inventory)
+     * @return The event fish if one can be caught, otherwise null
+     */
+    public CustomFish checkForEventFish(Player player, Location location, FishingBait bait) {
         // Get the event manager
         FishingEventManager eventManager = plugin.getEventManager();
         
@@ -213,9 +248,20 @@ public class FishingManager {
         ItemMeta meta = fishingRod.getItemMeta();
         double rodBonus = 0.0;
         
-        // FIX: Check if the ItemMeta has CustomModelData before accessing it
-        if (meta != null && meta.hasCustomModelData()) {
-            FishingRod rod = getFishingRodByModelData(meta.getCustomModelData());
+        if (meta != null) {
+            FishingRod rod = null;
+            org.bukkit.persistence.PersistentDataContainer rodContainer = meta.getPersistentDataContainer();
+            org.bukkit.NamespacedKey rodKey = org.bukkit.NamespacedKey.fromString("nusafishing:rod_id");
+            if (rodKey != null && rodContainer.has(rodKey, org.bukkit.persistence.PersistentDataType.STRING)) {
+                rod = getRodById(rodContainer.get(rodKey, org.bukkit.persistence.PersistentDataType.STRING));
+            }
+            if (rod == null) {
+                int cmd = id.nusafishing.compat.CustomModelDataHelper.getCustomModelData(meta);
+                if (cmd > 0) {
+                    rod = getFishingRodByModelData(cmd);
+                }
+            }
+
             if (rod != null) {
                 // More significant rod bonuses based on tier
                 switch (rod.getTier()) {
@@ -237,9 +283,19 @@ public class FishingManager {
             }
         }
         
-        // Factor in bait quality more significantly
-        ItemStack offHandItem = player.getInventory().getItemInOffHand();
-        FishingBait bait = getBaitFromItem(offHandItem);
+        // Factor in bait quality
+        if (bait == null) {
+            ItemStack offHandItem = player.getInventory().getItemInOffHand();
+            bait = getBaitFromItem(offHandItem);
+            if (bait == null) {
+                for (ItemStack invItem : player.getInventory().getContents()) {
+                    if (invItem == null) continue;
+                    bait = getBaitFromItem(invItem);
+                    if (bait != null) break;
+                }
+            }
+        }
+
         double baitBonus = 0.0;
         if (bait != null) {
             // Base bonus from tier boost
@@ -284,7 +340,7 @@ public class FishingManager {
         
         return null;
     }
-    
+
     /**
      * Select a random fish based on player's location, time, weather, etc.
      * @param player The player fishing
@@ -292,8 +348,32 @@ public class FishingManager {
      * @return A randomly selected fish suitable for the conditions, or null if no fish can be caught
      */
     public CustomFish selectRandomFish(Player player, FishingRod rod) {
+        return selectRandomFish(player, rod, null);
+    }
+
+    /**
+     * Select a random fish with active bait
+     * @param player The player fishing
+     * @param rod The fishing rod being used
+     * @param activeBait The active bait being used
+     * @return A randomly selected fish
+     */
+    public CustomFish selectRandomFish(Player player, FishingRod rod, FishingBait activeBait) {
+        // Resolve active bait if not explicitly passed
+        if (activeBait == null) {
+            ItemStack offHandItem = player.getInventory().getItemInOffHand();
+            activeBait = getBaitFromItem(offHandItem);
+            if (activeBait == null) {
+                for (ItemStack invItem : player.getInventory().getContents()) {
+                    if (invItem == null) continue;
+                    activeBait = getBaitFromItem(invItem);
+                    if (activeBait != null) break;
+                }
+            }
+        }
+
         // Check for event fish first (highest priority)
-        CustomFish eventFish = checkForEventFish(player, player.getLocation());
+        CustomFish eventFish = checkForEventFish(player, player.getLocation(), activeBait);
         if (eventFish != null) {
             return eventFish;
         }
@@ -314,7 +394,14 @@ public class FishingManager {
         } else {
             // Default values for vanilla rod - reduced penalty to help players
             totalTierBoost = 0;
-            qualityBoost = 0.9;  // Less penalty than before (0.8 → 0.9)
+            qualityBoost = 0.9;
+        }
+
+        // Apply bait boosts
+        if (activeBait != null) {
+            totalTierBoost += activeBait.getTierBoost();
+            qualityBoost *= activeBait.getQualityBoost();
+            weightBoost *= activeBait.getWeightBoost();
         }
 
         // Add the missing section to populate availableFish
@@ -332,17 +419,13 @@ public class FishingManager {
         String timeOfDay = getTimeOfDay(world.getTime());
         String weather = getWeatherCondition(world);
         
-        // Get active bait if any
-        ItemStack offHandItem = player.getInventory().getItemInOffHand();
-        FishingBait activeBait = getBaitFromItem(offHandItem);
-        
         // Calculate weight for each fish and add to available list if catchable
         for (CustomFish fish : allFish.values()) {
             // Skip event fish in normal fishing
             if (fish.getId().startsWith("event_")) continue;
             
             // Calculate weight based on various factors
-            double weight = calculateFishWeight(fish, activeBait, specialLocation);
+            double weight = calculateFishWeight(fish, activeBait, specialLocation, timeOfDay);
             
             // If weight > 0, fish can be caught in current conditions
             if (weight > 0) {
@@ -356,6 +439,9 @@ public class FishingManager {
         // This ensures vanilla rods always catch something
         if (availableFish.isEmpty()) {
             CustomFish defaultFish = configManager.getCustomFishes().get("small_carp");
+            if (defaultFish == null && !configManager.getCustomFishes().isEmpty()) {
+                defaultFish = configManager.getCustomFishes().values().iterator().next();
+            }
             if (defaultFish != null) {
                 return defaultFish.createCaughtInstance(totalTierBoost, qualityBoost, weightBoost);
             }
@@ -376,13 +462,20 @@ public class FishingManager {
         }
         
         // Fallback to return a basic fish
-        return configManager.getCustomFishes().get("small_carp").createCaughtInstance(0, 1.0, 1.0);
+        CustomFish fallbackFish = configManager.getCustomFishes().get("small_carp");
+        if (fallbackFish == null && !configManager.getCustomFishes().isEmpty()) {
+            fallbackFish = configManager.getCustomFishes().values().iterator().next();
+        }
+        if (fallbackFish != null) {
+            return fallbackFish.createCaughtInstance(totalTierBoost, qualityBoost, weightBoost);
+        }
+        return null;
     }
     
     /**
      * Calculate weight (selection probability) for a fish based on various factors
      */
-    private double calculateFishWeight(CustomFish fish, FishingBait bait, SpecialLocation location) {
+    private double calculateFishWeight(CustomFish fish, FishingBait bait, SpecialLocation location, String timeOfDay) {
         // Base weight calculation - make rarer fish MUCH harder to catch
         // Ikan dengan tier tinggi lebih sulit ditangkap secara eksponensial
         double baseWeight;
@@ -443,10 +536,15 @@ public class FishingManager {
         // Location modifier remains the same
         double locationModifier = (location != null) ? location.fishMultiplier : 1.0;
         
-        // Add time-based factor - legendary fish more common at night/dawn
-        // Tambahkan faktor ini jika ingin menambah variasi
+        // Add time-based factor - legendary and epic fish more active at night/sunset
+        double timeModifier = 1.0;
+        if (fish.getBaseTier() == CustomFish.FishTier.LEGENDARY || fish.getBaseTier() == CustomFish.FishTier.EPIC) {
+            if ("NIGHT".equalsIgnoreCase(timeOfDay) || "SUNSET".equalsIgnoreCase(timeOfDay)) {
+                timeModifier = 1.25;
+            }
+        }
         
-        return baseWeight * baitModifier * locationModifier;
+        return baseWeight * baitModifier * locationModifier * timeModifier;
     }
     
     /**

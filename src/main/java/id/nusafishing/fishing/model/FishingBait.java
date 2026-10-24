@@ -10,6 +10,7 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.NamespacedKey;
 
 import id.nusafishing.NusaFishing;
+import id.nusafishing.compat.CustomModelDataHelper;
 
 public class FishingBait {
     private String id;
@@ -24,9 +25,6 @@ public class FishingBait {
     private double price; // Harga kustom
     private double qualityBoost;  // Multiplier untuk kualitas ikan
     private double weightBoost;   // Multiplier untuk berat ikan
-    
-    // Add field for tracking last user
-    private Player lastUser;
     
     public FishingBait(String id, String name, String description, 
                      Material material, int customModelData,
@@ -45,7 +43,6 @@ public class FishingBait {
         this.price = price;
         this.qualityBoost = qualityBoost;
         this.weightBoost = weightBoost;
-        this.lastUser = null;
     }
     
     // Getters
@@ -62,16 +59,6 @@ public class FishingBait {
     public double getQualityBoost() { return qualityBoost; }
     public double getWeightBoost() { return weightBoost; }
     
-    // Add getLastUser method
-    public Player getLastUser() { 
-        return lastUser; 
-    }
-    
-    // Add setLastUser method
-    public void setLastUser(Player player) { 
-        this.lastUser = player; 
-    }
-    
     public boolean canCatchFish(String fishId) {
         // If validFish is empty or null, it can catch any fish
         if (validFish == null || validFish.isEmpty()) {
@@ -81,46 +68,82 @@ public class FishingBait {
     }
     
     /**
-     * Use one charge of the bait in the player's off hand
+     * Checks if the given ItemStack represents this bait.
+     */
+    public boolean isThisBait(ItemStack item) {
+        if (item == null || item.getType() != material) return false;
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return false;
+
+        PersistentDataContainer container = meta.getPersistentDataContainer();
+        NamespacedKey cleanKey = NamespacedKey.fromString("nusafishing:bait_id");
+        NamespacedKey dottedKey = NamespacedKey.fromString("nusafishing:nusafishing.bait_id");
+
+        String storedId = null;
+        if (cleanKey != null && container.has(cleanKey, PersistentDataType.STRING)) {
+            storedId = container.get(cleanKey, PersistentDataType.STRING);
+        } else if (dottedKey != null && container.has(dottedKey, PersistentDataType.STRING)) {
+            storedId = container.get(dottedKey, PersistentDataType.STRING);
+        }
+
+        if (storedId != null) {
+            return id.equalsIgnoreCase(storedId);
+        }
+
+        int model = CustomModelDataHelper.getCustomModelData(meta);
+        return model > 0 && model == customModelData;
+    }
+
+    /**
+     * Use one charge of the bait from the player's off hand or inventory
      * @param player The player using the bait
      * @return true if successful, false if no more uses or no bait
      */
     public boolean consumeUse(Player player) {
+        if (player == null) return false;
+
+        // Try off hand first
         ItemStack offHandItem = player.getInventory().getItemInOffHand();
-        if (offHandItem == null || offHandItem.getType() != material) {
-            return false;
+        if (offHandItem != null && isThisBait(offHandItem)) {
+            return consumeFromItem(player, offHandItem, -1);
         }
-        
-        // Check if this is the correct bait
-        ItemMeta meta = offHandItem.getItemMeta();
-        if (meta == null || !meta.hasCustomModelData() || meta.getCustomModelData() != customModelData) {
-            return false;
+
+        // Search player inventory
+        for (int i = 0; i < player.getInventory().getSize(); i++) {
+            ItemStack item = player.getInventory().getItem(i);
+            if (item != null && isThisBait(item)) {
+                return consumeFromItem(player, item, i);
+            }
         }
-        
-        // Check/update remaining uses
-        NamespacedKey usesKey = new NamespacedKey(NusaFishing.getInstance(), "bait_uses");
+
+        return false;
+    }
+
+    private boolean consumeFromItem(Player player, ItemStack item, int slot) {
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return false;
+
+        NamespacedKey usesKey = NamespacedKey.fromString("nusafishing:bait_uses");
         PersistentDataContainer container = meta.getPersistentDataContainer();
-        
+
         int remainingUses = container.getOrDefault(usesKey, PersistentDataType.INTEGER, usesPerItem);
         remainingUses--;
-        
+
         if (remainingUses <= 0) {
-            // Fix infinite bait issue - Force remove the last item
-            int amount = offHandItem.getAmount();
+            int amount = item.getAmount();
             if (amount > 1) {
-                // Reset uses for the next item in stack
                 container.set(usesKey, PersistentDataType.INTEGER, usesPerItem);
-                offHandItem.setItemMeta(meta);
-                offHandItem.setAmount(amount - 1);
+                item.setItemMeta(meta);
+                item.setAmount(amount - 1);
             } else {
-                // Remove the last item - force set to null instead of reducing amount
-                player.getInventory().setItemInOffHand(null);
+                if (slot == -1) {
+                    player.getInventory().setItemInOffHand(null);
+                } else {
+                    player.getInventory().setItem(slot, null);
+                }
             }
         } else {
-            // Update uses left
             container.set(usesKey, PersistentDataType.INTEGER, remainingUses);
-            
-            // Update lore to show uses remaining
             List<String> lore = meta.getLore();
             if (lore != null) {
                 for (int i = 0; i < lore.size(); i++) {
@@ -132,10 +155,9 @@ public class FishingBait {
                 }
                 meta.setLore(lore);
             }
-            
-            offHandItem.setItemMeta(meta);
+            item.setItemMeta(meta);
         }
-        
+
         return true;
     }
 }

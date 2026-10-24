@@ -176,65 +176,12 @@ public class ConfigEventFish {
      * @return A new CustomFish instance
      */
     public CustomFish createCustomFish() {
-        // Create base fish
         CustomFish fish = new CustomFish(
             id, name, description, material, modelData,
             textureProvider, textureId,
             minWeight, maxWeight, minQuality, maxQuality,
             basePrice, tier
-        ) {
-            // Override getPrice() to use our balanced pricing formula for event fish
-            @Override
-            public double getPrice() {
-                // Get weight and quality
-                double weight = getWeight();
-                int quality = getQuality();
-                
-                // Base price is already set in the config (50k-200k range)
-                double baseValue = getBasePrice();
-                
-                // 1. Apply quality scaling (square root for diminishing returns)
-                double qualityFactor = 0.5 + (Math.sqrt(quality) / 10.0);
-                
-                // 2. Apply logarithmic weight scaling to prevent extreme prices
-                // Weight factor increases more slowly for very heavy fish
-                double weightFactor;
-                if (weight < 100.0) {
-                    weightFactor = 0.8 + (Math.log10(1 + weight) / 5.0);
-                } else if (weight < 1000.0) {
-                    weightFactor = 1.0 + (Math.log10(weight/100.0) / 3.0);
-                } else {
-                    weightFactor = 1.2 + (Math.log10(weight/1000.0) / 5.0);
-                }
-                
-                // 3. Apply tier multiplier (but reduced from normal fish)
-                double tierMultiplier;
-                switch (getActualTier()) {
-                    case LEGENDARY: tierMultiplier = 1.5; break;
-                    case EPIC: tierMultiplier = 1.3; break;
-                    case RARE: tierMultiplier = 1.1; break;
-                    default: tierMultiplier = 1.0;
-                }
-                
-                // 4. Calculate raw price
-                double rawPrice = baseValue * qualityFactor * weightFactor * tierMultiplier;
-                
-                // 5. Apply soft price cap with diminishing returns above threshold
-                double priceCap = 1000000.0; // 1 million maximum
-                if (rawPrice > priceCap) {
-                    double excess = rawPrice - priceCap;
-                    double cappedExcess = Math.sqrt(excess) * 1000; // Square root for diminishing returns
-                    rawPrice = priceCap + cappedExcess;
-                    
-                    // Hard cap at 2 million
-                    rawPrice = Math.min(rawPrice, 2000000.0);
-                }
-                
-                return rawPrice;
-            }
-        };
-        
-        // Generate an actual caught instance with proper weight/quality
+        );
         return fish.createCaughtInstance(2, 1.5, 1.5);
     }
     

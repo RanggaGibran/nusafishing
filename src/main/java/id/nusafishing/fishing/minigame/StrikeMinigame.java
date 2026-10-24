@@ -181,12 +181,23 @@ public class StrikeMinigame {
         
         if (success && fish != null) {
             // Award the fish to player
-            player.getInventory().addItem(fish.createItemStack());
+            Map<Integer, ItemStack> leftover = player.getInventory().addItem(fish.createItemStack());
+            if (!leftover.isEmpty()) {
+                for (ItemStack drop : leftover.values()) {
+                    player.getWorld().dropItemNaturally(player.getLocation(), drop);
+                }
+                player.sendMessage("§e§lPerhatian! §fInventory kamu penuh, ikan dijatuhkan ke tanah.");
+            }
             player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
             
             // Record the catch in statistics
             plugin.getStatisticsManager().recordFishCaught(player.getUniqueId(), fish);
             
+            // Check for event fish catch
+            if (fish.getId().startsWith("event_")) {
+                plugin.getEventManager().handleEventFishCaught(player, fish);
+            }
+
             // Record untuk turnamen juga jika sedang berlangsung
             if (plugin.getTournamentManager().isTournamentActive()) {
                 plugin.getTournamentManager().recordCatch(player, fish);
@@ -224,6 +235,15 @@ public class StrikeMinigame {
      * @param player The player to remove hooks from
      */
     private void removePlayerFishingHook(Player player) {
+        if (player == null) return;
+        try {
+            org.bukkit.entity.FishHook hook = player.getFishHook();
+            if (hook != null && hook.isValid()) {
+                hook.remove();
+                return;
+            }
+        } catch (Throwable ignored) {
+        }
         // Check all entities in the world for fishing hooks belonging to this player
         player.getWorld().getEntitiesByClass(org.bukkit.entity.FishHook.class).stream()
             .filter(hook -> hook.getShooter() instanceof Player)

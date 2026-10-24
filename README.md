@@ -84,7 +84,63 @@ Each fish in `fishing.yml` (or event fish in `config.yml`) can specify:
 
 ### Examples
 
-Add fish entries in `fishing.yml`:
+#### Custom Fishing Rod Configuration (`fishing.yml`)
+
+```yaml
+fishing_rods:
+  # Nexo Custom Rod
+  nexo_carbon_rod:
+    name: "Pancingan Carbon Nexo"
+    description: "Pancingan serat karbon dari Nexo"
+    texture_provider: nexo
+    texture_id: "carbon_rod"
+    material: FISHING_ROD       # Fallback jika Nexo tidak aktif
+    custom_model_data: 1010     # Fallback CMD
+    durability: 400
+    stamina_modifier: 0.45
+    tier: ADVANCED
+    special_ability: true
+    ability_description: "15% kesempatan mendapat ikan tier lebih tinggi"
+    price: 35000
+    lure_level: 3
+    max_weight_capacity: 750.0
+
+  # Oraxen Custom Rod
+  oraxen_mythic_rod:
+    name: "Pancingan Mistik Oraxen"
+    description: "Pancingan bertuah dari Oraxen"
+    texture_provider: oraxen
+    texture_id: "mythic_rod"
+    material: FISHING_ROD       # Fallback jika Oraxen tidak aktif
+    custom_model_data: 1020     # Fallback CMD
+    durability: 600
+    stamina_modifier: 0.35
+    tier: EXPERT
+    special_ability: true
+    ability_description: "25% kesempatan double catch"
+    price: 90000
+    lure_level: 4
+    max_weight_capacity: 3500.0
+
+  # ItemsAdder Custom Rod
+  ia_poseidon_rod:
+    name: "Pancingan Poseidon ItemsAdder"
+    description: "Pancingan legendaris dari ItemsAdder"
+    texture_provider: itemsadder
+    texture_id: "nusafishing:poseidon_rod"   # format namespace:id
+    material: FISHING_ROD                    # Fallback jika ItemsAdder tidak aktif
+    custom_model_data: 1030                  # Fallback CMD
+    durability: 1200
+    stamina_modifier: 0.25
+    tier: MASTER
+    special_ability: true
+    ability_description: "10% kesempatan mendapat ikan legendaris"
+    price: 300000
+    lure_level: 5
+    max_weight_capacity: 15000.0
+```
+
+#### Custom Fish Configuration (`fishing.yml`)
 
 ```yaml
 fishes:

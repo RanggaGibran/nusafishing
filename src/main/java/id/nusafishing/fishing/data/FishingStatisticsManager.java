@@ -18,6 +18,7 @@ public class FishingStatisticsManager {
     private final NusaFishing plugin;
     private final File statsFile;
     private FileConfiguration statsConfig;
+    private org.bukkit.scheduler.BukkitTask autosaveTask;
     
     // Cache untuk statistik
     private final Map<UUID, Integer> fishCaughtCache = new ConcurrentHashMap<>();
@@ -51,6 +52,11 @@ public class FishingStatisticsManager {
         
         // Load data ke cache
         loadCaches();
+
+        // Autosave periodik setiap 5 menit
+        this.autosaveTask = plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, () -> {
+            saveAllStats();
+        }, 20 * 60 * 5, 20 * 60 * 5);
     }
     
     private void loadCaches() {
@@ -135,17 +141,14 @@ public class FishingStatisticsManager {
             largestFishNameCache.put(playerId, fish.getName());
         }
         
-        // Autosave setiap 5 menit untuk performa
-        if (System.currentTimeMillis() % (5 * 60 * 1000) < 1000) {
-            savePlayerStats(playerId);
-        }
+        // Stats cached in memory, periodically saved to disk
     }
     
     /**
      * Simpan statistik pemain ke file konfigurasi
      * @param playerId UUID pemain
      */
-    private void savePlayerStats(UUID playerId) {
+    private synchronized void savePlayerStats(UUID playerId) {
         String path = playerId.toString();
         
         statsConfig.set(path + ".fish_caught", fishCaughtCache.getOrDefault(playerId, 0));
@@ -162,12 +165,30 @@ public class FishingStatisticsManager {
     }
     
     /**
-     * Simpan semua statistik pemain
+     * Simpan semua statistik pemain sekaligus
      */
-    public void saveAllStats() {
+    public synchronized void saveAllStats() {
         for (UUID playerId : fishCaughtCache.keySet()) {
-            savePlayerStats(playerId);
+            String path = playerId.toString();
+            statsConfig.set(path + ".fish_caught", fishCaughtCache.getOrDefault(playerId, 0));
+            statsConfig.set(path + ".legendary_fish", legendaryFishCache.getOrDefault(playerId, 0));
+            statsConfig.set(path + ".event_fish", eventFishCache.getOrDefault(playerId, 0));
+            statsConfig.set(path + ".largest_fish_weight", largestFishWeightCache.getOrDefault(playerId, 0.0));
+            statsConfig.set(path + ".largest_fish_name", largestFishNameCache.getOrDefault(playerId, "Tidak Ada"));
         }
+        try {
+            statsConfig.save(statsFile);
+        } catch (IOException e) {
+            plugin.getLogger().severe("Tidak bisa menyimpan fishing_stats.yml: " + e.getMessage());
+        }
+    }
+
+    public void shutdown() {
+        if (autosaveTask != null) {
+            autosaveTask.cancel();
+            autosaveTask = null;
+        }
+        saveAllStats();
     }
     
     // Getter untuk placeholder

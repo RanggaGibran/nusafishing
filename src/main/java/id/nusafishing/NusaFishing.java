@@ -115,15 +115,14 @@ public class NusaFishing extends JavaPlugin {
             skillManager.saveAllData();
         }
         
-        // Save statistics before shutdown
+        // Save statistics and cancel tasks before shutdown
         if (statisticsManager != null) {
-            statisticsManager.saveAllStats();
+            statisticsManager.shutdown();
         }
         
         // Clean up resources
         if (staminaManager != null) {
-            getServer().getOnlinePlayers().forEach(player -> 
-                staminaManager.removePlayer(player));
+            staminaManager.shutdown();
         }
         
         // Cancel scheduled tasks
