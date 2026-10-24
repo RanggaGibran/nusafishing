@@ -36,4 +36,15 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: build/libs/*.jar
+          name: "Release ${{ github.ref_name }}"
+          body: |
+            ## NusaFishing ${{ github.ref_name }}
+
+            ### What's Changed
+            - **Build System Migration**: Migrated from Maven to Gradle Kotlin DSL supporting Java Multi-Release JAR (`--release 21` baseline for Spigot/Paper 1.21.x and `META-INF/versions/25` for Paper 26.2+).
+            - **Custom Texture Providers**: Full abstraction and integration for **Nexo**, **Oraxen**, and **ItemsAdder** with graceful vanilla `CustomModelData` fallback.
+            - **Fishing Rod & Fish Textures**: Configurable `texture_provider` and `texture_id` support per fish species and fishing rod.
+            - **Bait System Fixes**: Fixed bait detection (inventory & off-hand), hook wait time reduction (`FishHook.setWaitTime`), proper usage deduction, and application of attraction, tier, quality, and weight boosts.
+            - **Cross-Version API Compatibility**: Modern particle and enchantment resolution across Paper 1.21.0 through 26.2+.
+            - **Automated Workflows**: GitHub Actions CI build and automated release workflows.
           generate_release_notes: true
