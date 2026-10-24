@@ -22,19 +22,28 @@ public class CustomFish {
         UNCOMMON("§a", 1.5, "Tidak Biasa"),
         RARE("§9", 2.0, "Langka"),
         EPIC("§5", 3.0, "Epik"),
-        LEGENDARY("§6", 5.0, "Legendaris");
+        LEGENDARY("§6", 5.0, "Legendaris"),
+        MYTHIC("§c", 8.0, "Mistik");
         
-        private final String color;
+        private final String defaultColor;
         private final double priceMultiplier;
         private final String displayName;
         
-        FishTier(String color, double priceMultiplier, String displayName) {
-            this.color = color;
+        FishTier(String defaultColor, double priceMultiplier, String displayName) {
+            this.defaultColor = defaultColor;
             this.priceMultiplier = priceMultiplier;
             this.displayName = displayName;
         }
         
-        public String getColor() { return color; }
+        public String getDefaultColor() { return defaultColor; }
+
+        public String getColor() {
+            if (NusaFishing.getInstance() != null && NusaFishing.getInstance().getConfigManager() != null) {
+                return NusaFishing.getInstance().getConfigManager().getFishTierColor(this);
+            }
+            return defaultColor;
+        }
+
         public double getPriceMultiplier() { return priceMultiplier; }
         public String getDisplayName() { return displayName; }
     }
@@ -147,9 +156,11 @@ public class CustomFish {
                 tierIndex += 1 + (int) ((tierBoost - 1) * 0.5);
             }
             
-            // Chance for legendary
+            // Chance for mythic or legendary
             if (random.nextInt(100) < (1.5 * tierBoost) && tierBoost > 0) {
-                if (tierIndex >= FishTier.RARE.ordinal()) {
+                if (tierIndex >= FishTier.EPIC.ordinal()) {
+                    return FishTier.MYTHIC;
+                } else if (tierIndex >= FishTier.RARE.ordinal()) {
                     return FishTier.LEGENDARY;
                 }
             }
@@ -215,7 +226,9 @@ public class CustomFish {
         // (Diterapkan di EconomyManager melalui dynamic pricing)
         
         // 7. Pastikan ikan langka tetap berharga
-        if (actualTier == FishTier.LEGENDARY || actualTier == FishTier.EPIC) {
+        if (actualTier == FishTier.MYTHIC) {
+            finalPrice = Math.max(finalPrice, basePrice * 3);
+        } else if (actualTier == FishTier.LEGENDARY || actualTier == FishTier.EPIC) {
             finalPrice = Math.max(finalPrice, basePrice * 2);
         }
         
@@ -238,6 +251,7 @@ public class CustomFish {
         }
         double tierMultiplier;
         switch (getActualTier()) {
+            case MYTHIC: tierMultiplier = 2.0; break;
             case LEGENDARY: tierMultiplier = 1.5; break;
             case EPIC: tierMultiplier = 1.3; break;
             case RARE: tierMultiplier = 1.1; break;

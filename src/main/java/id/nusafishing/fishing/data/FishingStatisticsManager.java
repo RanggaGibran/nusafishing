@@ -120,8 +120,8 @@ public class FishingStatisticsManager {
         int currentCount = fishCaughtCache.getOrDefault(playerId, 0);
         fishCaughtCache.put(playerId, currentCount + 1);
         
-        // Cek ikan legendary
-        if (fish.getActualTier() == CustomFish.FishTier.LEGENDARY) {
+        // Cek ikan legendary atau mythic
+        if (fish.getActualTier() == CustomFish.FishTier.LEGENDARY || fish.getActualTier() == CustomFish.FishTier.MYTHIC) {
             int legendaryCount = legendaryFishCache.getOrDefault(playerId, 0);
             legendaryFishCache.put(playerId, legendaryCount + 1);
         }

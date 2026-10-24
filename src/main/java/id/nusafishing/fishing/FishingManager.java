@@ -265,6 +265,9 @@ public class FishingManager {
             if (rod != null) {
                 // More significant rod bonuses based on tier
                 switch (rod.getTier()) {
+                    case MYTHIC:
+                        rodBonus = 0.05; // +5%
+                        break;
                     case MASTER:
                         rodBonus = 0.03; // +3%
                         break;
@@ -480,6 +483,9 @@ public class FishingManager {
         // Ikan dengan tier tinggi lebih sulit ditangkap secara eksponensial
         double baseWeight;
         switch (fish.getBaseTier()) {
+            case MYTHIC:
+                baseWeight = 4.0 / (1 + fish.getBasePrice() * 2.5); // 25x harder than regular formula
+                break;
             case LEGENDARY:
                 baseWeight = 10.0 / (1 + fish.getBasePrice() * 2); // 10x harder than regular formula
                 break;
@@ -498,6 +504,10 @@ public class FishingManager {
         if (bait != null) {
             // Apply attraction modifier based on tier
             switch (fish.getBaseTier()) {
+                case MYTHIC:
+                    // Bait only 15% as effective for mythic
+                    baitModifier = 1.0 + ((bait.getAttractionModifier() - 1.0) * 0.15);
+                    break;
                 case LEGENDARY:
                     // Bait only 25% as effective for legendary
                     baitModifier = 1.0 + ((bait.getAttractionModifier() - 1.0) * 0.25);
@@ -518,6 +528,9 @@ public class FishingManager {
             // Apply bonus for matching fish, but with diminishing returns by tier
             if (!bait.getValidFish().isEmpty() && bait.getValidFish().contains(fish.getId())) {
                 switch (fish.getBaseTier()) {
+                    case MYTHIC:
+                        baitModifier *= 2.0;  // 2x bonus
+                        break;
                     case LEGENDARY:
                         baitModifier *= 3.0;  // 3x bonus (instead of 10x)
                         break;
@@ -536,9 +549,9 @@ public class FishingManager {
         // Location modifier remains the same
         double locationModifier = (location != null) ? location.fishMultiplier : 1.0;
         
-        // Add time-based factor - legendary and epic fish more active at night/sunset
+        // Add time-based factor - legendary, mythic and epic fish more active at night/sunset
         double timeModifier = 1.0;
-        if (fish.getBaseTier() == CustomFish.FishTier.LEGENDARY || fish.getBaseTier() == CustomFish.FishTier.EPIC) {
+        if (fish.getBaseTier() == CustomFish.FishTier.MYTHIC || fish.getBaseTier() == CustomFish.FishTier.LEGENDARY || fish.getBaseTier() == CustomFish.FishTier.EPIC) {
             if ("NIGHT".equalsIgnoreCase(timeOfDay) || "SUNSET".equalsIgnoreCase(timeOfDay)) {
                 timeModifier = 1.25;
             }

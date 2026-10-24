@@ -7,6 +7,7 @@ import id.nusafishing.compat.CompatibilityHelper;
 import id.nusafishing.compat.CustomModelDataHelper;
 import id.nusafishing.compat.PlatformHelper;
 import id.nusafishing.fishing.model.CustomFish;
+import id.nusafishing.fishing.model.FishingRod;
 import id.nusafishing.integration.item.ItemProviderManager;
 import id.nusafishing.integration.item.ItemTextureProvider;
 import id.nusafishing.integration.item.VanillaItemTextureProvider;
@@ -407,5 +408,30 @@ public class ItemProviderTest {
         rodStack.setItemMeta(meta);
 
         assertEquals(100, id.nusafishing.fishing.FishingListener.getRodDurability(rodStack));
+    }
+
+    @Test
+    public void testMythicTierAndConfigurableColors() {
+        // 1. Verify Mythic Fish Tier properties
+        assertEquals("Mistik", CustomFish.FishTier.MYTHIC.getDisplayName());
+        assertEquals(8.0, CustomFish.FishTier.MYTHIC.getPriceMultiplier(), 0.001);
+        assertEquals("§c", CustomFish.FishTier.MYTHIC.getDefaultColor());
+        assertEquals("§c", CustomFish.FishTier.MYTHIC.getColor());
+
+        // 2. Verify Mythic Rod Tier properties
+        assertEquals("Mistik", FishingRod.RodTier.MYTHIC.getDisplayName());
+        assertEquals(4.0, FishingRod.RodTier.MYTHIC.getCatchRateMultiplier(), 0.001);
+        assertEquals(5, FishingRod.RodTier.MYTHIC.getTierBoost());
+        assertEquals("§c", FishingRod.RodTier.MYTHIC.getDefaultColor());
+        assertEquals("§c", FishingRod.RodTier.MYTHIC.getColor());
+
+        // 3. Create Mythic fish and test pricing
+        CustomFish mythicFish = new CustomFish(
+                "mythic_dragon", "Naga Samudra", "Mistik fish", Material.PUFFERFISH,
+                4009, 1000.0, 5000.0, 90, 100, 2000.0, CustomFish.FishTier.MYTHIC
+        );
+        CustomFish caught = mythicFish.createCaughtInstance(0, 1.0, 1.0);
+        assertEquals(CustomFish.FishTier.MYTHIC, caught.getActualTier());
+        assertTrue("Mythic price should guarantee at least 3x base price", caught.getPrice() >= 6000.0);
     }
 }

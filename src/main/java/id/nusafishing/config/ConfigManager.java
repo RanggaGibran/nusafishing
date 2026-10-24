@@ -2,10 +2,12 @@ package id.nusafishing.config;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -24,14 +26,19 @@ public class ConfigManager {
     private Map<String, FishingRod> fishingRods;
     private Map<String, FishingBait> fishingBaits;
     private Map<String, CustomFish> customFishes;
+    private Map<CustomFish.FishTier, String> fishTierColors;
+    private Map<FishingRod.RodTier, String> rodTierColors;
     
     public ConfigManager(NusaFishing plugin) {
         this.plugin = plugin;
         this.fishingRods = new HashMap<>();
         this.fishingBaits = new HashMap<>();
         this.customFishes = new HashMap<>();
+        this.fishTierColors = new EnumMap<>(CustomFish.FishTier.class);
+        this.rodTierColors = new EnumMap<>(FishingRod.RodTier.class);
         
         // Initialize configs
+        loadTierColors();
         createFishingConfig();
         loadFishingConfig();
     }
@@ -89,6 +96,7 @@ public class ConfigManager {
                             case ADVANCED -> 500.0;
                             case EXPERT -> 2500.0;
                             case MASTER -> 10000.0;
+                            case MYTHIC -> 50000.0;
                             default -> 25.0;
                         });
                 
@@ -177,6 +185,7 @@ public class ConfigManager {
     public void reloadConfigs() {
         // Reload plugin config
         plugin.reloadConfig();
+        loadTierColors();
         
         // Reload fishing config
         reloadFishingConfig();
@@ -186,6 +195,56 @@ public class ConfigManager {
         
         // Log message
         plugin.getLogger().info("Semua konfigurasi berhasil dimuat ulang!");
+    }
+
+    public void loadTierColors() {
+        fishTierColors.clear();
+        rodTierColors.clear();
+
+        FileConfiguration config = plugin.getConfig();
+        ConfigurationSection tierColorsSection = config != null ? config.getConfigurationSection("tier_colors") : null;
+
+        ConfigurationSection fishColors = tierColorsSection != null ? tierColorsSection.getConfigurationSection("fish") : null;
+        for (CustomFish.FishTier tier : CustomFish.FishTier.values()) {
+            String colorCode = null;
+            if (fishColors != null) {
+                colorCode = fishColors.getString(tier.name());
+            }
+            if (colorCode == null && tierColorsSection != null) {
+                colorCode = tierColorsSection.getString(tier.name());
+            }
+            if (colorCode != null && !colorCode.isEmpty()) {
+                fishTierColors.put(tier, ChatColor.translateAlternateColorCodes('&', colorCode));
+            } else {
+                fishTierColors.put(tier, tier.getDefaultColor());
+            }
+        }
+
+        ConfigurationSection rodColors = tierColorsSection != null ? tierColorsSection.getConfigurationSection("rod") : null;
+        for (FishingRod.RodTier tier : FishingRod.RodTier.values()) {
+            String colorCode = null;
+            if (rodColors != null) {
+                colorCode = rodColors.getString(tier.name());
+            }
+            if (colorCode == null && tierColorsSection != null) {
+                colorCode = tierColorsSection.getString(tier.name());
+            }
+            if (colorCode != null && !colorCode.isEmpty()) {
+                rodTierColors.put(tier, ChatColor.translateAlternateColorCodes('&', colorCode));
+            } else {
+                rodTierColors.put(tier, tier.getDefaultColor());
+            }
+        }
+    }
+
+    public String getFishTierColor(CustomFish.FishTier tier) {
+        if (tier == null) return "§7";
+        return fishTierColors.getOrDefault(tier, tier.getDefaultColor());
+    }
+
+    public String getRodTierColor(FishingRod.RodTier tier) {
+        if (tier == null) return "§7";
+        return rodTierColors.getOrDefault(tier, tier.getDefaultColor());
     }
 
     public void reloadFishingConfig() {

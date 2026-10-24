@@ -1,5 +1,22 @@
 # NusaFishing Main Configuration
 
+# Tier color customization (Supports Minecraft color codes e.g. &7, &a, &c, etc.)
+tier_colors:
+  fish:
+    COMMON: "&7"
+    UNCOMMON: "&a"
+    RARE: "&9"
+    EPIC: "&5"
+    LEGENDARY: "&6"
+    MYTHIC: "&c"
+  rod:
+    BASIC: "&7"
+    INTERMEDIATE: "&a"
+    ADVANCED: "&9"
+    EXPERT: "&5"
+    MASTER: "&6"
+    MYTHIC: "&c"
+
 # Economy settings
 economy:
   # Tier-based repair cost multipliers
@@ -9,6 +26,7 @@ economy:
     ADVANCED: 2.5
     EXPERT: 4.0
     MASTER: 6.0
+    MYTHIC: 8.0
   # Cost for repairing 1 durability point
   repair_cost_per_durability: 5.0  # Dari 2.0 → 5.0 (2.5x lipat)
   # Fish price multiplier (1.0 = normal price)

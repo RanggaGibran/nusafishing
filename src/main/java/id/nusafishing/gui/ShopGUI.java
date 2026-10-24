@@ -670,6 +670,9 @@ public class ShopGUI extends GUI {
         } else if (container.has(legacyTierKey, PersistentDataType.INTEGER)) {
             tierOrdinal = container.get(legacyTierKey, PersistentDataType.INTEGER);
         }
+        if (tierOrdinal < 0 || tierOrdinal >= CustomFish.FishTier.values().length) {
+            tierOrdinal = templateFish.getBaseTier().ordinal();
+        }
         CustomFish.FishTier actualTier = CustomFish.FishTier.values()[tierOrdinal];
         
         // Gunakan reflection untuk mengatur properti fish

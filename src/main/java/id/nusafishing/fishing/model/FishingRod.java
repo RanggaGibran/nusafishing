@@ -24,21 +24,30 @@ public class FishingRod {
         INTERMEDIATE("§a", 1.2, 1, "Menengah"),
         ADVANCED("§9", 1.5, 2, "Mahir"),
         EXPERT("§5", 2.0, 3, "Expert"),
-        MASTER("§6", 3.0, 4, "Master");
+        MASTER("§6", 3.0, 4, "Master"),
+        MYTHIC("§c", 4.0, 5, "Mistik");
         
-        private final String color;
+        private final String defaultColor;
         private final double catchRateMultiplier;
         private final int tierBoost;
         private final String displayName;
         
-        RodTier(String color, double catchRateMultiplier, int tierBoost, String displayName) {
-            this.color = color;
+        RodTier(String defaultColor, double catchRateMultiplier, int tierBoost, String displayName) {
+            this.defaultColor = defaultColor;
             this.catchRateMultiplier = catchRateMultiplier;
             this.tierBoost = tierBoost;
             this.displayName = displayName;
         }
         
-        public String getColor() { return color; }
+        public String getDefaultColor() { return defaultColor; }
+
+        public String getColor() {
+            if (NusaFishing.getInstance() != null && NusaFishing.getInstance().getConfigManager() != null) {
+                return NusaFishing.getInstance().getConfigManager().getRodTierColor(this);
+            }
+            return defaultColor;
+        }
+
         public double getCatchRateMultiplier() { return catchRateMultiplier; }
         public int getTierBoost() { return tierBoost; }
         public String getDisplayName() { return displayName; }
