@@ -787,8 +787,8 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
         int totalFishSold = 0;
         
         if (sellAll) {
-            // Sell all fish in inventory
-            ItemStack[] contents = player.getInventory().getContents();
+            // Sell all fish in storage inventory
+            ItemStack[] contents = player.getInventory().getStorageContents();
             Map<String, Integer> fishSold = new HashMap<>();
             
             for (int i = 0; i < contents.length; i++) {
@@ -866,16 +866,28 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
     private CustomFish getFishFromItem(ItemStack item) {
         if (item == null) return null;
         ItemMeta meta = item.getItemMeta();
-        if (meta == null || !meta.hasCustomModelData()) return null;
+        if (meta == null) return null;
 
         PersistentDataContainer container = meta.getPersistentDataContainer();
-        NamespacedKey fishIdKey = new NamespacedKey(plugin, "fish_id");
-        NamespacedKey weightKey = new NamespacedKey(plugin, "fish_weight");
-        NamespacedKey qualityKey = new NamespacedKey(plugin, "fish_quality");
+        NamespacedKey cleanFishIdKey = NamespacedKey.fromString("nusafishing:fish_id");
+        NamespacedKey legacyFishIdKey = new NamespacedKey(plugin, "fish_id");
 
-        if (!container.has(fishIdKey, PersistentDataType.STRING)) return null;
+        String fishId = null;
+        if (cleanFishIdKey != null && container.has(cleanFishIdKey, PersistentDataType.STRING)) {
+            fishId = container.get(cleanFishIdKey, PersistentDataType.STRING);
+        } else if (container.has(legacyFishIdKey, PersistentDataType.STRING)) {
+            fishId = container.get(legacyFishIdKey, PersistentDataType.STRING);
+        }
 
-        String fishId = container.get(fishIdKey, PersistentDataType.STRING);
+        if (fishId == null) return null;
+
+        NamespacedKey cleanWeightKey = NamespacedKey.fromString("nusafishing:fish_weight");
+        NamespacedKey legacyWeightKey = new NamespacedKey(plugin, "fish_weight");
+        NamespacedKey cleanQualityKey = NamespacedKey.fromString("nusafishing:fish_quality");
+        NamespacedKey legacyQualityKey = new NamespacedKey(plugin, "fish_quality");
+        NamespacedKey cleanTierKey = NamespacedKey.fromString("nusafishing:fish_tier");
+        NamespacedKey legacyTierKey = new NamespacedKey(plugin, "fish_tier");
+
         CustomFish templateFish = plugin.getConfigManager().getCustomFishes().get(fishId);
         if (templateFish == null) return null;
 
@@ -885,6 +897,8 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
             templateFish.getDescription(),
             templateFish.getMaterial(),
             templateFish.getCustomModelData(),
+            templateFish.getTextureProvider(),
+            templateFish.getTextureId(),
             templateFish.getMinWeight(),
             templateFish.getMaxWeight(),
             templateFish.getMinQuality(),
@@ -893,12 +907,27 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
             templateFish.getBaseTier() // Pass the base tier from template fish
         );
 
-        double weight = container.getOrDefault(weightKey, PersistentDataType.DOUBLE, templateFish.getMinWeight());
-        int quality = container.getOrDefault(qualityKey, PersistentDataType.INTEGER, templateFish.getMinQuality());
+        double weight = templateFish.getMinWeight();
+        if (cleanWeightKey != null && container.has(cleanWeightKey, PersistentDataType.DOUBLE)) {
+            weight = container.get(cleanWeightKey, PersistentDataType.DOUBLE);
+        } else if (container.has(legacyWeightKey, PersistentDataType.DOUBLE)) {
+            weight = container.get(legacyWeightKey, PersistentDataType.DOUBLE);
+        }
+
+        int quality = templateFish.getMinQuality();
+        if (cleanQualityKey != null && container.has(cleanQualityKey, PersistentDataType.INTEGER)) {
+            quality = container.get(cleanQualityKey, PersistentDataType.INTEGER);
+        } else if (container.has(legacyQualityKey, PersistentDataType.INTEGER)) {
+            quality = container.get(legacyQualityKey, PersistentDataType.INTEGER);
+        }
         
         // Baca data tier yang tersimpan (atau gunakan base tier jika tidak ada)
-        NamespacedKey tierKey = new NamespacedKey(plugin, "fish_tier");
-        int tierOrdinal = container.getOrDefault(tierKey, PersistentDataType.INTEGER, templateFish.getBaseTier().ordinal());
+        int tierOrdinal = templateFish.getBaseTier().ordinal();
+        if (cleanTierKey != null && container.has(cleanTierKey, PersistentDataType.INTEGER)) {
+            tierOrdinal = container.get(cleanTierKey, PersistentDataType.INTEGER);
+        } else if (container.has(legacyTierKey, PersistentDataType.INTEGER)) {
+            tierOrdinal = container.get(legacyTierKey, PersistentDataType.INTEGER);
+        }
         CustomFish.FishTier actualTier = CustomFish.FishTier.values()[tierOrdinal];
 
         try {

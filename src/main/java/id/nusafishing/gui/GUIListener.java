@@ -5,6 +5,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 public class GUIListener implements Listener {
@@ -22,6 +23,19 @@ public class GUIListener implements Listener {
             
             // Let the GUI handle the click
             gui.handleClick(event);
+        }
+    }
+
+    @EventHandler
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (!(event.getWhoClicked() instanceof Player)) return;
+        
+        Player player = (Player) event.getWhoClicked();
+        GUI gui = GUI.getOpenGUI(player);
+        
+        if (gui != null) {
+            // Cancel dragging items into or across GUI
+            event.setCancelled(true);
         }
     }
     

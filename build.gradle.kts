@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "id.nusafishing"
-version = "1.1+release"
+version = "1.2+beta"
 
 repositories {
     mavenCentral()

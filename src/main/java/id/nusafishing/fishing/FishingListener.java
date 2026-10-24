@@ -143,10 +143,20 @@ public class FishingListener implements Listener {
                 }
                 CustomFish fish = fishingManager.selectRandomFish(player, null, bait);
                 if (fish != null) {
-                    player.getInventory().addItem(fish.createItemStack());
+                    Map<Integer, ItemStack> leftover = player.getInventory().addItem(fish.createItemStack());
+                    if (!leftover.isEmpty()) {
+                        for (ItemStack drop : leftover.values()) {
+                            player.getWorld().dropItemNaturally(player.getLocation(), drop);
+                        }
+                        player.sendMessage("§e§lPerhatian! §fInventory kamu penuh, ikan dijatuhkan ke tanah.");
+                    }
                     player.sendMessage("§aKamu menangkap §f" + fish.getName() + "§a!");
                     player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
                     
+                    if (fish.getId().startsWith("event_")) {
+                        plugin.getEventManager().handleEventFishCaught(player, fish);
+                    }
+
                     // TAMBAHAN: Hapus fishing hook setelah berhasil menangkap ikan
                     removePlayerFishingHook(player);
                 }
@@ -330,124 +340,10 @@ public class FishingListener implements Listener {
         // Memulai minigame tangkap ikan
         int durabilityLoss = customRod != null ? DURABILITY_LOSS_ON_CATCH : 0;
         
-        // Start the fishing minigame with the selected fish
-        plugin.getServer().getScheduler().runTask(plugin, () -> {
-            strikeMinigame.startStrikeGame(player, fish, fishingRod, durabilityLoss);
-            // Set metadata to mark player as in minigame
-            player.setMetadata("NF_InMinigame", new FixedMetadataValue(plugin, true));
-        });
-    }
-    
-    private boolean consumeBaitFromInventory(Player player, FishingBait bait) {
-        if (player == null || bait == null) return false;
-        return bait.consumeUse(player);
-    }
-    
-    private boolean isSameBait(ItemStack item, FishingBait bait) {
-        if (item == null || bait == null) return false;
-        FishingBait itemBait = fishingManager.getBaitFromItem(item);
-        return itemBait != null && itemBait.getId().equalsIgnoreCase(bait.getId());
-    }
-    
-    private boolean consumeBaitItem(Player player, ItemStack item, int inventorySlot) {
-        // Get bait data
-        ItemMeta meta = item.getItemMeta();
-        PersistentDataContainer container = meta.getPersistentDataContainer();
-        NamespacedKey usesKey = new NamespacedKey(plugin, "bait_uses");
-        NamespacedKey baitIdKey = new NamespacedKey(plugin, "nusafishing.bait_id");
-        
-        // Get bait ID to find the config
-        if (!container.has(baitIdKey, PersistentDataType.STRING)) return false;
-        String baitId = container.get(baitIdKey, PersistentDataType.STRING);
-        FishingBait baitConfig = plugin.getConfigManager().getFishingBaits().get(baitId);
-        if (baitConfig == null) return false;
-        
-        // Get remaining uses
-        int remainingUses = container.getOrDefault(usesKey, PersistentDataType.INTEGER, baitConfig.getUsesPerItem());
-        remainingUses--;
-        
-        if (remainingUses <= 0) {
-            // Last use, reduce stack size
-            if (item.getAmount() > 1) {
-                item.setAmount(item.getAmount() - 1);
-                // Reset uses for next item
-                container.set(usesKey, PersistentDataType.INTEGER, baitConfig.getUsesPerItem());
-                item.setItemMeta(meta);
-            } else {
-                // Remove last item
-                player.getInventory().setItem(inventorySlot, null);
-            }
-        } else {
-            // Update uses count
-            container.set(usesKey, PersistentDataType.INTEGER, remainingUses);
-            
-            // Update lore to reflect uses
-            List<String> lore = meta.getLore();
-            if (lore != null) {
-                for (int i = 0; i < lore.size(); i++) {
-                    String line = lore.get(i);
-                    if (line.contains("Sisa penggunaan:")) {
-                        lore.set(i, "§7Sisa penggunaan: §e" + remainingUses + "/" + baitConfig.getUsesPerItem());
-                        break;
-                    }
-                }
-                meta.setLore(lore);
-            }
-            
-            item.setItemMeta(meta);
-        }
-        
-        return true;
-    }
-    
-    private boolean consumeBaitItem(Player player, ItemStack item, ItemStack offHandItem) {
-        ItemMeta meta = item.getItemMeta();
-        PersistentDataContainer container = meta.getPersistentDataContainer();
-        NamespacedKey usesKey = new NamespacedKey(plugin, "bait_uses");
-        NamespacedKey baitIdKey = new NamespacedKey(plugin, "nusafishing.bait_id");
-        
-        // Get bait ID
-        if (!container.has(baitIdKey, PersistentDataType.STRING)) return false;
-        String baitId = container.get(baitIdKey, PersistentDataType.STRING);
-        FishingBait baitConfig = plugin.getConfigManager().getFishingBaits().get(baitId);
-        if (baitConfig == null) return false;
-        
-        // Get remaining uses
-        int remainingUses = container.getOrDefault(usesKey, PersistentDataType.INTEGER, baitConfig.getUsesPerItem());
-        remainingUses--;
-        
-        if (remainingUses <= 0) {
-            // Last use, reduce stack size
-            if (item.getAmount() > 1) {
-                item.setAmount(item.getAmount() - 1);
-                // Reset uses
-                container.set(usesKey, PersistentDataType.INTEGER, baitConfig.getUsesPerItem());
-                item.setItemMeta(meta);
-            } else {
-                // Remove last item
-                player.getInventory().setItemInOffHand(null);
-            }
-        } else {
-            // Update uses
-            container.set(usesKey, PersistentDataType.INTEGER, remainingUses);
-            
-            // Update lore
-            List<String> lore = meta.getLore();
-            if (lore != null) {
-                for (int i = 0; i < lore.size(); i++) {
-                    String line = lore.get(i);
-                    if (line.contains("Sisa penggunaan:")) {
-                        lore.set(i, "§7Sisa penggunaan: §e" + remainingUses + "/" + baitConfig.getUsesPerItem());
-                        break;
-                    }
-                }
-                meta.setLore(lore);
-            }
-            
-            item.setItemMeta(meta);
-        }
-        
-        return true;
+        // Start the fishing minigame with the selected fish immediately
+        strikeMinigame.startStrikeGame(player, fish, fishingRod, durabilityLoss);
+        // Set metadata to mark player as in minigame
+        player.setMetadata("NF_InMinigame", new FixedMetadataValue(plugin, true));
     }
     
     /**
@@ -467,6 +363,15 @@ public class FishingListener implements Listener {
      * @param player The player to remove hooks from
      */
     private void removePlayerFishingHook(Player player) {
+        if (player == null) return;
+        try {
+            org.bukkit.entity.FishHook hook = player.getFishHook();
+            if (hook != null && hook.isValid()) {
+                hook.remove();
+                return;
+            }
+        } catch (Throwable ignored) {
+        }
         // Check all entities in the world for fishing hooks belonging to this player
         player.getWorld().getEntitiesByClass(org.bukkit.entity.FishHook.class).stream()
             .filter(hook -> hook.getShooter() instanceof Player)
@@ -490,10 +395,13 @@ public class FishingListener implements Listener {
         }
         
         PersistentDataContainer container = meta.getPersistentDataContainer();
-        NamespacedKey key = new NamespacedKey(NusaFishing.getInstance(), ROD_DURABILITY_KEY);
+        NamespacedKey cleanKey = NamespacedKey.fromString("nusafishing:durability");
+        NamespacedKey legacyKey = NamespacedKey.fromString("nusafishing:" + ROD_DURABILITY_KEY);
         
-        if (container.has(key, PersistentDataType.INTEGER)) {
-            return container.get(key, PersistentDataType.INTEGER);
+        if (cleanKey != null && container.has(cleanKey, PersistentDataType.INTEGER)) {
+            return container.get(cleanKey, PersistentDataType.INTEGER);
+        } else if (container.has(legacyKey, PersistentDataType.INTEGER)) {
+            return container.get(legacyKey, PersistentDataType.INTEGER);
         }
         
         return 0;
@@ -517,17 +425,28 @@ public class FishingListener implements Listener {
         }
         
         PersistentDataContainer container = meta.getPersistentDataContainer();
-        NamespacedKey durabilityKey = new NamespacedKey(NusaFishing.getInstance(), ROD_DURABILITY_KEY);
-        NamespacedKey rodIdKey = new NamespacedKey(NusaFishing.getInstance(), ROD_ID_KEY);
+        NamespacedKey cleanDurabilityKey = NamespacedKey.fromString("nusafishing:durability");
+        NamespacedKey legacyDurabilityKey = NamespacedKey.fromString("nusafishing:" + ROD_DURABILITY_KEY);
+        NamespacedKey cleanRodIdKey = NamespacedKey.fromString("nusafishing:rod_id");
+        NamespacedKey legacyRodIdKey = NamespacedKey.fromString("nusafishing:" + ROD_ID_KEY);
         
-        if (!container.has(durabilityKey, PersistentDataType.INTEGER) || 
-            !container.has(rodIdKey, PersistentDataType.STRING)) {
+        String rodId = null;
+        if (cleanRodIdKey != null && container.has(cleanRodIdKey, PersistentDataType.STRING)) {
+            rodId = container.get(cleanRodIdKey, PersistentDataType.STRING);
+        } else if (container.has(legacyRodIdKey, PersistentDataType.STRING)) {
+            rodId = container.get(legacyRodIdKey, PersistentDataType.STRING);
+        }
+
+        if (rodId == null) {
             return 0;
         }
-        
-        // Get current values
-        int currentDurability = container.get(durabilityKey, PersistentDataType.INTEGER);
-        String rodId = container.get(rodIdKey, PersistentDataType.STRING);
+
+        int currentDurability = 0;
+        if (cleanDurabilityKey != null && container.has(cleanDurabilityKey, PersistentDataType.INTEGER)) {
+            currentDurability = container.get(cleanDurabilityKey, PersistentDataType.INTEGER);
+        } else if (container.has(legacyDurabilityKey, PersistentDataType.INTEGER)) {
+            currentDurability = container.get(legacyDurabilityKey, PersistentDataType.INTEGER);
+        }
         
         // Get rod info for max durability
         FishingRod rod = NusaFishing.getInstance().getFishingManager().getRodById(rodId);
@@ -538,8 +457,11 @@ public class FishingListener implements Listener {
         // Calculate new durability
         int newDurability = Math.max(0, currentDurability - amount);
         
-        // Update persistent data
-        container.set(durabilityKey, PersistentDataType.INTEGER, newDurability);
+        // Update persistent data on both clean and legacy keys
+        if (cleanDurabilityKey != null) {
+            container.set(cleanDurabilityKey, PersistentDataType.INTEGER, newDurability);
+        }
+        container.set(legacyDurabilityKey, PersistentDataType.INTEGER, newDurability);
         
         // Update lore
         List<String> lore = meta.getLore();
@@ -586,22 +508,33 @@ public class FishingListener implements Listener {
         }
         
         PersistentDataContainer container = meta.getPersistentDataContainer();
-        NamespacedKey durabilityKey = new NamespacedKey(NusaFishing.getInstance(), ROD_DURABILITY_KEY);
-        NamespacedKey rodIdKey = new NamespacedKey(NusaFishing.getInstance(), ROD_ID_KEY);
+        NamespacedKey cleanDurabilityKey = NamespacedKey.fromString("nusafishing:durability");
+        NamespacedKey legacyDurabilityKey = NamespacedKey.fromString("nusafishing:" + ROD_DURABILITY_KEY);
+        NamespacedKey cleanRodIdKey = NamespacedKey.fromString("nusafishing:rod_id");
+        NamespacedKey legacyRodIdKey = NamespacedKey.fromString("nusafishing:" + ROD_ID_KEY);
         
-        if (!container.has(rodIdKey, PersistentDataType.STRING)) {
+        String rodId = null;
+        if (cleanRodIdKey != null && container.has(cleanRodIdKey, PersistentDataType.STRING)) {
+            rodId = container.get(cleanRodIdKey, PersistentDataType.STRING);
+        } else if (container.has(legacyRodIdKey, PersistentDataType.STRING)) {
+            rodId = container.get(legacyRodIdKey, PersistentDataType.STRING);
+        }
+
+        if (rodId == null) {
             return false;
         }
         
         // Get rod info for max durability
-        String rodId = container.get(rodIdKey, PersistentDataType.STRING);
         FishingRod rod = NusaFishing.getInstance().getFishingManager().getRodById(rodId);
         if (rod == null) {
             return false;
         }
         
-        // Reset durability to max
-        container.set(durabilityKey, PersistentDataType.INTEGER, rod.getDurability());
+        // Reset durability to max on both keys
+        if (cleanDurabilityKey != null) {
+            container.set(cleanDurabilityKey, PersistentDataType.INTEGER, rod.getDurability());
+        }
+        container.set(legacyDurabilityKey, PersistentDataType.INTEGER, rod.getDurability());
         
         // Update lore
         List<String> lore = meta.getLore();

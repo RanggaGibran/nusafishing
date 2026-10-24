@@ -357,4 +357,55 @@ public class ItemProviderTest {
 
         assertTrue(bait.consumeUse(player));
     }
+
+    @Test
+    public void testEventFishPricingAndTierBoost() {
+        CustomFish eventFish = new CustomFish(
+                "event_test_leviathan",
+                "Leviathan Test",
+                "Event fish for testing",
+                Material.PUFFERFISH,
+                4001,
+                5000.0, 15000.0,
+                90, 100,
+                200000.0,
+                CustomFish.FishTier.LEGENDARY
+        );
+
+        // Caught instance should use balanced event fish pricing formula
+        CustomFish caught = eventFish.createCaughtInstance(2, 1.5, 1.5);
+        assertTrue(caught.getPrice() > 0);
+        // Price should not exceed the hard cap of 2,000,000
+        assertTrue(caught.getPrice() <= 2000000.0);
+
+        // Diminishing returns test: tierBoost = 3 should be able to increase tier without crashing or zero-casting
+        CustomFish commonFish = new CustomFish(
+                "common_carp", "Carp", "Common carp", Material.COD,
+                0, 1.0, 5.0, 10, 50, 10.0, CustomFish.FishTier.COMMON
+        );
+        CustomFish boosted = commonFish.createCaughtInstance(3, 1.0, 1.0);
+        assertNotNull(boosted.getActualTier());
+        assertTrue(boosted.getActualTier().ordinal() >= CustomFish.FishTier.COMMON.ordinal());
+    }
+
+    @Test
+    public void testRodDurabilityBothPdcKeys() {
+        be.seeseemelk.mockbukkit.entity.PlayerMock player = server.addPlayer();
+        ItemStack rodStack = new ItemStack(Material.FISHING_ROD);
+        ItemMeta meta = rodStack.getItemMeta();
+        assertNotNull(meta);
+
+        NamespacedKey cleanKey = NamespacedKey.fromString("nusafishing:durability");
+        NamespacedKey dottedKey = NamespacedKey.fromString("nusafishing:nusafishing.durability");
+        NamespacedKey cleanRodKey = NamespacedKey.fromString("nusafishing:rod_id");
+        NamespacedKey dottedRodKey = NamespacedKey.fromString("nusafishing:nusafishing.rod_id");
+
+        meta.getPersistentDataContainer().set(cleanKey, PersistentDataType.INTEGER, 100);
+        meta.getPersistentDataContainer().set(dottedKey, PersistentDataType.INTEGER, 100);
+        meta.getPersistentDataContainer().set(cleanRodKey, PersistentDataType.STRING, "test_rod");
+        meta.getPersistentDataContainer().set(dottedRodKey, PersistentDataType.STRING, "test_rod");
+        rodStack.setItemMeta(meta);
+
+        assertEquals(100, id.nusafishing.fishing.FishingListener.getRodDurability(rodStack));
+    }
 }

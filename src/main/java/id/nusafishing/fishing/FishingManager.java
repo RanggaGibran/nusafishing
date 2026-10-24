@@ -425,7 +425,7 @@ public class FishingManager {
             if (fish.getId().startsWith("event_")) continue;
             
             // Calculate weight based on various factors
-            double weight = calculateFishWeight(fish, activeBait, specialLocation);
+            double weight = calculateFishWeight(fish, activeBait, specialLocation, timeOfDay);
             
             // If weight > 0, fish can be caught in current conditions
             if (weight > 0) {
@@ -475,7 +475,7 @@ public class FishingManager {
     /**
      * Calculate weight (selection probability) for a fish based on various factors
      */
-    private double calculateFishWeight(CustomFish fish, FishingBait bait, SpecialLocation location) {
+    private double calculateFishWeight(CustomFish fish, FishingBait bait, SpecialLocation location, String timeOfDay) {
         // Base weight calculation - make rarer fish MUCH harder to catch
         // Ikan dengan tier tinggi lebih sulit ditangkap secara eksponensial
         double baseWeight;
@@ -536,10 +536,15 @@ public class FishingManager {
         // Location modifier remains the same
         double locationModifier = (location != null) ? location.fishMultiplier : 1.0;
         
-        // Add time-based factor - legendary fish more common at night/dawn
-        // Tambahkan faktor ini jika ingin menambah variasi
+        // Add time-based factor - legendary and epic fish more active at night/sunset
+        double timeModifier = 1.0;
+        if (fish.getBaseTier() == CustomFish.FishTier.LEGENDARY || fish.getBaseTier() == CustomFish.FishTier.EPIC) {
+            if ("NIGHT".equalsIgnoreCase(timeOfDay) || "SUNSET".equalsIgnoreCase(timeOfDay)) {
+                timeModifier = 1.25;
+            }
+        }
         
-        return baseWeight * baitModifier * locationModifier;
+        return baseWeight * baitModifier * locationModifier * timeModifier;
     }
     
     /**

@@ -85,11 +85,17 @@ public class PlayerSkillManager {
     }
     
     public int getFishingLevel(UUID playerId) {
-        return fishingLevels.getOrDefault(playerId, 1);
+        if (fishingLevels.containsKey(playerId)) {
+            return fishingLevels.get(playerId);
+        }
+        return dataConfig.getInt(playerId.toString() + ".fishing_level", 1);
     }
 
     public int getFishingExperience(UUID playerId) {
-        return fishingExperience.getOrDefault(playerId, 0);
+        if (fishingExperience.containsKey(playerId)) {
+            return fishingExperience.get(playerId);
+        }
+        return dataConfig.getInt(playerId.toString() + ".fishing_exp", 0);
     }
     
     public void addFishingExp(Player player, int expAmount) {
