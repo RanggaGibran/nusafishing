@@ -22,6 +22,8 @@ public class ConfigEventFish {
     private final String description;
     private final Material material;
     private final int modelData;
+    private final String textureProvider;
+    private final String textureId;
     private final double minWeight;
     private final double maxWeight;
     private final int minQuality;
@@ -33,11 +35,21 @@ public class ConfigEventFish {
     public ConfigEventFish(String id, String name, String description, Material material, int modelData,
                           double minWeight, double maxWeight, int minQuality, int maxQuality,
                           double basePrice, CustomFish.FishTier tier, List<EventType> eventTypes) {
+        this(id, name, description, material, modelData, "vanilla", null,
+             minWeight, maxWeight, minQuality, maxQuality, basePrice, tier, eventTypes);
+    }
+
+    public ConfigEventFish(String id, String name, String description, Material material, int modelData,
+                          String textureProvider, String textureId,
+                          double minWeight, double maxWeight, int minQuality, int maxQuality,
+                          double basePrice, CustomFish.FishTier tier, List<EventType> eventTypes) {
         this.id = id;
         this.name = name;
         this.description = description;
         this.material = material;
         this.modelData = modelData;
+        this.textureProvider = (textureProvider == null || textureProvider.isBlank()) ? "vanilla" : textureProvider.trim().toLowerCase();
+        this.textureId = textureId;
         this.minWeight = minWeight;
         this.maxWeight = maxWeight;
         this.minQuality = minQuality;
@@ -87,6 +99,8 @@ public class ConfigEventFish {
                 }
                 
                 int customModelData = fishSection.getInt("custom_model_data", 0);
+                String textureProvider = fishSection.getString("texture_provider", "vanilla");
+                String textureId = fishSection.getString("texture_id", null);
                 double minWeight = fishSection.getDouble("min_weight", 1.0);
                 double maxWeight = fishSection.getDouble("max_weight", 10.0);
                 int minQuality = fishSection.getInt("min_quality", 1);
@@ -117,6 +131,7 @@ public class ConfigEventFish {
                 
                 // Create the event fish
                 ConfigEventFish eventFish = new ConfigEventFish(fishId, name, description, material, customModelData,
+                                                          textureProvider, textureId,
                                                           minWeight, maxWeight, minQuality, maxQuality,
                                                           basePrice, tier, eventTypes);
                 
@@ -164,6 +179,7 @@ public class ConfigEventFish {
         // Create base fish
         CustomFish fish = new CustomFish(
             id, name, description, material, modelData,
+            textureProvider, textureId,
             minWeight, maxWeight, minQuality, maxQuality,
             basePrice, tier
         ) {
@@ -228,6 +244,8 @@ public class ConfigEventFish {
     public String getDescription() { return description; }
     public Material getMaterial() { return material; }
     public int getModelData() { return modelData; }
+    public String getTextureProvider() { return textureProvider; }
+    public String getTextureId() { return textureId; }
     public double getMinWeight() { return minWeight; }
     public double getMaxWeight() { return maxWeight; }
     public int getMinQuality() { return minQuality; }

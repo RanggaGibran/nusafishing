@@ -476,7 +476,9 @@ public class EventFishCollectorGUI extends GUI {
                 player.spawnParticle(Particle.END_ROD, player.getLocation().add(x, 1, z), 5, 0.1, 0.1, 0.1, 0.05);
                 
                 if (ticks % 5 == 0) {
-                    player.spawnParticle(Particle.TOTEM, player.getLocation().add(0, 1, 0), 20, 0.5, 0.5, 0.5, 0.1);
+                    if (id.nusafishing.compat.CompatibilityHelper.TOTEM != null) {
+                        player.spawnParticle(id.nusafishing.compat.CompatibilityHelper.TOTEM, player.getLocation().add(0, 1, 0), 20, 0.5, 0.5, 0.5, 0.1);
+                    }
                 }
                 
                 ticks++;
@@ -602,6 +604,8 @@ public class EventFishCollectorGUI extends GUI {
         
         // Play bonus effect
         player.playSound(player.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, 1.0f, 1.0f);
-        player.spawnParticle(Particle.SPELL_WITCH, player.getLocation().add(0, 1, 0), 50, 0.5, 0.5, 0.5, 0.1);
+        if (id.nusafishing.compat.CompatibilityHelper.WITCH != null) {
+            player.spawnParticle(id.nusafishing.compat.CompatibilityHelper.WITCH, player.getLocation().add(0, 1, 0), 50, 0.5, 0.5, 0.5, 0.1);
+        }
     }
 }

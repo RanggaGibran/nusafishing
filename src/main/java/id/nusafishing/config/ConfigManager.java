@@ -125,8 +125,14 @@ public class ConfigManager {
             for (String key : fishesSection.getKeys(false)) {
                 String name = fishesSection.getString(key + ".name", key);
                 String description = fishesSection.getString(key + ".description", "");
-                Material material = Material.getMaterial(fishesSection.getString(key + ".material", "COD"));
+                String materialName = fishesSection.getString(key + ".material", "COD");
+                Material material = Material.getMaterial(materialName != null ? materialName.toUpperCase() : "COD");
+                if (material == null) {
+                    material = Material.COD;
+                }
                 int customModelData = fishesSection.getInt(key + ".custom_model_data", 0);
+                String textureProvider = fishesSection.getString(key + ".texture_provider", "vanilla");
+                String textureId = fishesSection.getString(key + ".texture_id", null);
                 double minWeight = fishesSection.getDouble(key + ".min_weight", 0.1);
                 double maxWeight = fishesSection.getDouble(key + ".max_weight", 1.0);
                 int minQuality = fishesSection.getInt(key + ".min_quality", 1);
@@ -143,6 +149,7 @@ public class ConfigManager {
                 }
                 
                 CustomFish fish = new CustomFish(key, name, description, material, customModelData,
+                                                textureProvider, textureId,
                                                 minWeight, maxWeight, minQuality, maxQuality, 
                                                 basePrice, tier);
                 customFishes.put(key, fish);

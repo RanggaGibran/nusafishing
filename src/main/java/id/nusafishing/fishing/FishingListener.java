@@ -232,16 +232,20 @@ public class FishingListener implements Listener {
             String lureBoost = extraLure > 0 ? " §7(+"+extraLure+" Lure)" : "";
             
             // Efek visual LEBIH DRAMATIS
-            player.getWorld().spawnParticle(
-                Particle.WATER_BUBBLE, 
-                player.getLocation().add(0, 1.0, 0), 
-                50, 0.7, 0.7, 0.7, 0.1
-            );
-            player.getWorld().spawnParticle(
-                Particle.WATER_SPLASH,
-                event.getHook().getLocation(),
-                30, 0.3, 0.0, 0.3, 0.2
-            );
+            if (id.nusafishing.compat.CompatibilityHelper.BUBBLE != null) {
+                player.getWorld().spawnParticle(
+                    id.nusafishing.compat.CompatibilityHelper.BUBBLE, 
+                    player.getLocation().add(0, 1.0, 0), 
+                    50, 0.7, 0.7, 0.7, 0.1
+                );
+            }
+            if (id.nusafishing.compat.CompatibilityHelper.SPLASH != null) {
+                player.getWorld().spawnParticle(
+                    id.nusafishing.compat.CompatibilityHelper.SPLASH,
+                    event.getHook().getLocation(),
+                    30, 0.3, 0.0, 0.3, 0.2
+                );
+            }
             
             // Efek suara LEBIH JELAS
             player.playSound(player.getLocation(), Sound.ENTITY_FISHING_BOBBER_THROW, 1.0f, 1.5f);
@@ -301,9 +305,11 @@ public class FishingListener implements Listener {
             boolean consumed = bait.consumeUse(player);
             
             if (consumed) {
-                player.spawnParticle(Particle.WATER_BUBBLE, 
-                    player.getLocation().add(0, 0.5, 0), 
-                    10, 0.2, 0.2, 0.2, 0.1);
+                if (id.nusafishing.compat.CompatibilityHelper.BUBBLE != null) {
+                    player.spawnParticle(id.nusafishing.compat.CompatibilityHelper.BUBBLE, 
+                        player.getLocation().add(0, 0.5, 0), 
+                        10, 0.2, 0.2, 0.2, 0.1);
+                }
             }
         }
         
@@ -686,11 +692,13 @@ public class FishingListener implements Listener {
                     lastBaitItem = offHandItem.clone();
                     
                     // Show particles
-                    player.getWorld().spawnParticle(
-                        Particle.WATER_BUBBLE, 
-                        player.getLocation().add(0, 0.5, 0), 
-                        5, 0.2, 0.2, 0.2, 0
-                    );
+                    if (id.nusafishing.compat.CompatibilityHelper.BUBBLE != null) {
+                        player.getWorld().spawnParticle(
+                            id.nusafishing.compat.CompatibilityHelper.BUBBLE, 
+                            player.getLocation().add(0, 0.5, 0), 
+                            5, 0.2, 0.2, 0.2, 0
+                        );
+                    }
                     
                     // Send action bar message
                     String tierBoostText = bait.getTierBoost() > 0 ? 

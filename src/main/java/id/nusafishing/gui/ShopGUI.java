@@ -461,7 +461,7 @@ public class ShopGUI extends GUI {
                     .lore("")
                     .lore("§8ID: " + rodId)
                     .customModelData(rod.getCustomModelData())
-                    .enchant(Enchantment.LUCK, 1)
+                    .enchant(Enchantment.LUCK_OF_THE_SEA, 1)
                     .enchant(Enchantment.LURE, rod.getLureLevel()) // Tambahkan enchantment Lure
                     .flag(ItemFlag.HIDE_ENCHANTS)
                     .flag(ItemFlag.HIDE_ATTRIBUTES)
@@ -512,7 +512,7 @@ public class ShopGUI extends GUI {
                     .lore("")
                     .lore("§8ID: " + baitId)
                     .customModelData(bait.getCustomModelData())
-                    .enchant(Enchantment.LUCK, 1)
+                    .enchant(Enchantment.LUCK_OF_THE_SEA, 1)
                     .flag(ItemFlag.HIDE_ENCHANTS)
                     .build();
             

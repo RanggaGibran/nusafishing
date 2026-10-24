@@ -64,8 +64,8 @@ public class ItemBuilder {
     }
     
     public ItemBuilder customModelData(int data) {
-        if (data > 0) {
-            meta.setCustomModelData(data);
+        if (data > 0 && meta != null) {
+            id.nusafishing.compat.CustomModelDataHelper.applyCustomModelData(meta, data);
         }
         return this;
     }

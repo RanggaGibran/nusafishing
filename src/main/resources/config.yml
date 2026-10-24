@@ -61,6 +61,8 @@ events:
     - SNOWY_BEACH
 
 # Event fish configuration
+# Mendukung texture_provider (vanilla, nexo, oraxen, itemsadder) dan texture_id
+# Material dan custom_model_data berfungsi sebagai fallback jika plugin tekstur tidak tersedia
 event_fish:
   event_ancient_leviathan:
     name: "Leviathan Kuno"

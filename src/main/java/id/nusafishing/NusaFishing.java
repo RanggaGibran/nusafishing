@@ -20,12 +20,14 @@ import id.nusafishing.placeholder.NusaFishingPlaceholders;
 import id.nusafishing.fishing.data.FishingStatisticsManager;
 import id.nusafishing.tournament.TournamentManager;
 import id.nusafishing.managers.RewardsManager;
+import id.nusafishing.integration.item.ItemProviderManager;
 
 public class NusaFishing extends JavaPlugin {
     private static final Logger LOGGER = Logger.getLogger("nusafishing");
     
     private static NusaFishing instance;
     
+    private ItemProviderManager itemProviderManager;
     private ConfigManager configManager;
     private StaminaManager staminaManager;
     private PlayerSkillManager skillManager;
@@ -45,6 +47,9 @@ public class NusaFishing extends JavaPlugin {
         
         // Save default config
         saveDefaultConfig();
+        
+        // Initialize item provider manager for texture support (Nexo, Oraxen, ItemsAdder, Vanilla)
+        itemProviderManager = new ItemProviderManager(this);
         
         // Initialize managers
         configManager = new ConfigManager(this);
@@ -142,6 +147,10 @@ public class NusaFishing extends JavaPlugin {
     // Static getter for plugin instance
     public static NusaFishing getInstance() {
         return instance;
+    }
+    
+    public ItemProviderManager getItemProviderManager() {
+        return itemProviderManager;
     }
     
     // Getter methods for managers

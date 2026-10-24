@@ -621,7 +621,7 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
                 .lore("")
                 .lore("§8ID: " + rodId)
                 .customModelData(rod.getCustomModelData())
-                .enchant(Enchantment.LUCK, 1)
+                .enchant(Enchantment.LUCK_OF_THE_SEA, 1)
                 .enchant(Enchantment.LURE, rod.getLureLevel())
                 .flag(ItemFlag.HIDE_ENCHANTS)
                 .flag(ItemFlag.HIDE_ATTRIBUTES)
@@ -675,7 +675,7 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
                 .lore("§8Penggunaan: §f" + bait.getUsesPerItem() + "x")
                 .lore("§8ID: " + baitId)
                 .customModelData(bait.getCustomModelData())
-                .enchant(Enchantment.LUCK, 1)
+                .enchant(Enchantment.LUCK_OF_THE_SEA, 1)
                 .flag(ItemFlag.HIDE_ENCHANTS)
                 .flag(ItemFlag.HIDE_ATTRIBUTES)
                 .build();

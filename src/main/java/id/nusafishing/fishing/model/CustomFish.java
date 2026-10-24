@@ -13,6 +13,7 @@ import org.bukkit.NamespacedKey;
 
 import id.nusafishing.util.ItemBuilder;
 import id.nusafishing.NusaFishing;
+import id.nusafishing.compat.CustomModelDataHelper;
 
 public class CustomFish {
     // Definisikan tier ikan
@@ -45,6 +46,8 @@ public class CustomFish {
     private String description;
     private Material material;
     private int customModelData;
+    private String textureProvider; // "vanilla", "nexo", "oraxen", "itemsadder"
+    private String textureId;       // Item ID in custom provider
     private double minWeight;
     private double maxWeight;
     private int minQuality;
@@ -61,11 +64,22 @@ public class CustomFish {
                      int customModelData, double minWeight, double maxWeight,
                      int minQuality, int maxQuality, double basePrice,
                      FishTier baseTier) {
+        this(id, name, description, material, customModelData, "vanilla", null,
+             minWeight, maxWeight, minQuality, maxQuality, basePrice, baseTier);
+    }
+
+    public CustomFish(String id, String name, String description, Material material,
+                     int customModelData, String textureProvider, String textureId,
+                     double minWeight, double maxWeight,
+                     int minQuality, int maxQuality, double basePrice,
+                     FishTier baseTier) {
         this.id = id;
         this.name = name;
         this.description = description;
-        this.material = material;
+        this.material = material != null ? material : Material.COD;
         this.customModelData = customModelData;
+        this.textureProvider = (textureProvider == null || textureProvider.isBlank()) ? "vanilla" : textureProvider.trim().toLowerCase();
+        this.textureId = textureId;
         this.minWeight = minWeight;
         this.maxWeight = maxWeight;
         this.minQuality = minQuality;
@@ -77,7 +91,7 @@ public class CustomFish {
     // Create a new caught fish instance with random weight and quality
     public CustomFish createCaughtInstance(int tierBoost, double qualityBoost, double weightBoost, double maxWeight) {
         CustomFish fish = new CustomFish(id, name, description, material, customModelData,
-                minWeight, maxWeight, minQuality, maxQuality, basePrice, baseTier);
+                textureProvider, textureId, minWeight, maxWeight, minQuality, maxQuality, basePrice, baseTier);
         
         // Generate random weight with boost applied
         double weightRange = Math.min(this.maxWeight, maxWeight) - minWeight;
@@ -225,24 +239,40 @@ public class CustomFish {
 
     // Create an item stack for this fish with tier coloring
     public ItemStack createItemStack() {
-        ItemStack fishItem = new ItemBuilder(material)
-                .name(actualTier.getColor() + name + " " + actualTier.getDisplayName())
-                .lore("§7Berat: §f" + getFormattedWeight()) // Gunakan formatting berat baru
-                .lore("§7Kualitas: §f" + quality + "/100")
-                .lore("§7Tier: " + actualTier.getColor() + actualTier.getDisplayName())
-                .lore("§7Nilai: §f" + String.format("%.2f", getPrice()))
-                .lore("")
-                .lore("§8" + description)
-                .customModelData(customModelData)
-                .build();
+        ItemStack fishItem;
+        if (NusaFishing.getInstance() != null && NusaFishing.getInstance().getItemProviderManager() != null) {
+            fishItem = NusaFishing.getInstance().getItemProviderManager()
+                    .resolveBaseItem(textureProvider, textureId, material, customModelData);
+        } else {
+            fishItem = new ItemStack(material != null ? material : Material.COD);
+            ItemMeta meta = fishItem.getItemMeta();
+            if (meta != null && customModelData > 0) {
+                CustomModelDataHelper.applyCustomModelData(meta, customModelData);
+                fishItem.setItemMeta(meta);
+            }
+        }
+
+        ItemMeta meta = fishItem.getItemMeta();
+        if (meta == null) {
+            meta = org.bukkit.Bukkit.getItemFactory().getItemMeta(fishItem.getType());
+        }
+
+        meta.setDisplayName(actualTier.getColor() + name + " " + actualTier.getDisplayName());
+        List<String> lore = new java.util.ArrayList<>();
+        lore.add("§7Berat: §f" + getFormattedWeight());
+        lore.add("§7Kualitas: §f" + quality + "/100");
+        lore.add("§7Tier: " + actualTier.getColor() + actualTier.getDisplayName());
+        lore.add("§7Nilai: §f" + String.format("%.2f", getPrice()));
+        lore.add("");
+        lore.add("§8" + description);
+        meta.setLore(lore);
                 
         // Simpan data ikan
-        ItemMeta meta = fishItem.getItemMeta();
         PersistentDataContainer container = meta.getPersistentDataContainer();
-        container.set(new NamespacedKey(NusaFishing.getInstance(), "fish_id"), PersistentDataType.STRING, id);
-        container.set(new NamespacedKey(NusaFishing.getInstance(), "fish_weight"), PersistentDataType.DOUBLE, weight);
-        container.set(new NamespacedKey(NusaFishing.getInstance(), "fish_quality"), PersistentDataType.INTEGER, quality);
-        container.set(new NamespacedKey(NusaFishing.getInstance(), "fish_tier"), PersistentDataType.INTEGER, actualTier.ordinal());
+        container.set(NamespacedKey.fromString("nusafishing:fish_id"), PersistentDataType.STRING, id);
+        container.set(NamespacedKey.fromString("nusafishing:fish_weight"), PersistentDataType.DOUBLE, weight);
+        container.set(NamespacedKey.fromString("nusafishing:fish_quality"), PersistentDataType.INTEGER, quality);
+        container.set(NamespacedKey.fromString("nusafishing:fish_tier"), PersistentDataType.INTEGER, actualTier.ordinal());
         fishItem.setItemMeta(meta);
         
         return fishItem;
@@ -254,6 +284,8 @@ public class CustomFish {
     public String getDescription() { return description; }
     public Material getMaterial() { return material; }
     public int getCustomModelData() { return customModelData; }
+    public String getTextureProvider() { return textureProvider; }
+    public String getTextureId() { return textureId; }
     public double getMinWeight() { return minWeight; }
     public double getMaxWeight() { return maxWeight; }
     public int getMinQuality() { return minQuality; }
