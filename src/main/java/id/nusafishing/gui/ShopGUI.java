@@ -130,22 +130,7 @@ public class ShopGUI extends GUI {
             FishingRod rod = availableRods.get(i);
             double price = calculateRodPrice(rod);
             
-            ItemStack rodItem = new ItemBuilder(Material.FISHING_ROD)
-                    .name("§b" + rod.getName())
-                    .lore("§8" + rod.getDescription())
-                    .lore("")
-                    .lore("§7Ketahanan: §f" + rod.getDurability())
-                    .lore("§7Stamina: §f" + (rod.getStaminaModifier() < 1.0 ? 
-                            "-" + (int)((1.0 - rod.getStaminaModifier()) * 100) + "%" : 
-                            "+" + (int)((rod.getStaminaModifier() - 1.0) * 100) + "%"))
-                    .lore("")
-                    .lore("§7Harga: §f" + economy.formatMoney(price))
-                    .lore("")
-                    .lore(economy.hasMoney(player, price) ? 
-                            "§a► Klik untuk membeli" : "§c✘ Uang tidak cukup")
-                    .customModelData(rod.getCustomModelData())
-                    .flag(ItemFlag.HIDE_ATTRIBUTES)
-                    .build();
+            ItemStack rodItem = rod.createDisplayItem(price, economy.hasMoney(player, price));
             
             // Add to inventory with click handler that buys the rod
             setItem(slot, rodItem, () -> {
@@ -445,34 +430,7 @@ public class ShopGUI extends GUI {
             }
             
             // Create the fishing rod item
-            ItemStack rodItem = new ItemBuilder(Material.FISHING_ROD)
-                    .name(rod.getTier().getColor() + rod.getName() + " §7[" + rod.getTier().getDisplayName() + "]")
-                    .lore("§8" + rod.getDescription())
-                    .lore("")
-                    .lore("§7Ketahanan: §f" + rod.getDurability() + "/" + rod.getDurability())
-                    .lore("§7Stamina: §f" + (rod.getStaminaModifier() < 1.0 ? 
-                            "-" + (int)((1.0 - rod.getStaminaModifier()) * 100) + "%" : 
-                            "+" + (int)((rod.getStaminaModifier() - 1.0) * 100) + "%"))
-                    .lore("§7Tier: " + rod.getTier().getColor() + rod.getTier().getDisplayName())
-                    .lore("§7Quality Boost: §f+" + (int)((rod.getQualityBoost() - 1.0) * 100) + "%")
-                    .lore("§7Lure: §f" + rod.getLureLevel()) // Tambahkan info Lure level
-                    .lore("")
-                    .lore(rod.hasSpecialAbility() ? "§e✦ " + rod.getSpecialAbilityDescription() : "")
-                    .lore("")
-                    .lore("§8ID: " + rodId)
-                    .customModelData(rod.getCustomModelData())
-                    .enchant(Enchantment.LUCK_OF_THE_SEA, 1)
-                    .enchant(Enchantment.LURE, rod.getLureLevel()) // Tambahkan enchantment Lure
-                    .flag(ItemFlag.HIDE_ENCHANTS)
-                    .flag(ItemFlag.HIDE_ATTRIBUTES)
-                    .build();
-            
-            // Store rod ID and durability in persistent data
-            ItemMeta meta = rodItem.getItemMeta();
-            PersistentDataContainer container = meta.getPersistentDataContainer();
-            container.set(new NamespacedKey(plugin, "nusafishing.rod_id"), PersistentDataType.STRING, rodId);
-            container.set(new NamespacedKey(plugin, "nusafishing.durability"), PersistentDataType.INTEGER, rod.getDurability());
-            rodItem.setItemMeta(meta);
+            ItemStack rodItem = rod.createItemStack();
             
             // Give to player
             player.getInventory().addItem(rodItem);

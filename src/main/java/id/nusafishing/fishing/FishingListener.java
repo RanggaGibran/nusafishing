@@ -640,7 +640,7 @@ public class FishingListener implements Listener {
     }
     
     private FishingRod getCustomFishingRod(ItemStack item) {
-        if (item == null || item.getType() != Material.FISHING_ROD) {
+        if (item == null) {
             return null;
         }
         
@@ -649,10 +649,28 @@ public class FishingListener implements Listener {
             return null;
         }
         
-        // Check for custom model data
+        // 1. Check persistent data container for rod ID
+        PersistentDataContainer container = meta.getPersistentDataContainer();
+        NamespacedKey rodIdKey = NamespacedKey.fromString("nusafishing:rod_id");
+        if (container.has(rodIdKey, PersistentDataType.STRING)) {
+            String rodId = container.get(rodIdKey, PersistentDataType.STRING);
+            FishingRod rod = fishingManager.getRodById(rodId);
+            if (rod != null) {
+                return rod;
+            }
+        }
+        NamespacedKey legacyRodIdKey = NamespacedKey.fromString("nusafishing:nusafishing.rod_id");
+        if (container.has(legacyRodIdKey, PersistentDataType.STRING)) {
+            String rodId = container.get(legacyRodIdKey, PersistentDataType.STRING);
+            FishingRod rod = fishingManager.getRodById(rodId);
+            if (rod != null) {
+                return rod;
+            }
+        }
+        
+        // 2. Check for custom model data fallback
         if (meta.hasCustomModelData()) {
             int modelData = meta.getCustomModelData();
-            // Get rod by custom model data
             return fishingManager.getFishingRodByModelData(modelData);
         }
         

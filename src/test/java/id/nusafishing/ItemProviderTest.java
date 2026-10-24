@@ -216,4 +216,100 @@ public class ItemProviderTest {
         assertTrue("Java release must be 21 or 25", release == 21 || release == 25);
         assertNotNull(PlatformHelper.getRuntimeStrategy());
     }
+
+    @Test
+    public void testFishingRodTextureSupport() {
+        id.nusafishing.fishing.model.FishingRod rod = new id.nusafishing.fishing.model.FishingRod(
+                "custom_nexo_rod",
+                "Carbon Rod",
+                "Advanced carbon fishing rod",
+                Material.FISHING_ROD,
+                2020,
+                "nexo",
+                "nexo_carbon_rod",
+                300,
+                0.5,
+                id.nusafishing.fishing.model.FishingRod.RodTier.ADVANCED,
+                true,
+                "Double catch chance",
+                15000.0,
+                3,
+                500.0
+        );
+
+        assertEquals("nexo", rod.getTextureProvider());
+        assertEquals("nexo_carbon_rod", rod.getTextureId());
+
+        // Test createItemStack with fallback to Material.FISHING_ROD when Nexo is absent
+        ItemStack item = rod.createItemStack();
+        assertNotNull(item);
+        assertEquals(Material.FISHING_ROD, item.getType());
+
+        ItemMeta meta = item.getItemMeta();
+        assertNotNull(meta);
+        assertTrue(meta.getDisplayName().contains("Carbon Rod"));
+
+        // Verify PDC persistence
+        NamespacedKey rodIdKey = NamespacedKey.fromString("nusafishing:rod_id");
+        NamespacedKey durabilityKey = NamespacedKey.fromString("nusafishing:durability");
+        assertEquals("custom_nexo_rod", meta.getPersistentDataContainer().get(rodIdKey, PersistentDataType.STRING));
+        assertEquals(Integer.valueOf(300), meta.getPersistentDataContainer().get(durabilityKey, PersistentDataType.INTEGER));
+
+        // Test display item for shop
+        ItemStack displayItem = rod.createDisplayItem(15000.0, true);
+        assertNotNull(displayItem);
+        ItemMeta displayMeta = displayItem.getItemMeta();
+        assertNotNull(displayMeta);
+        assertTrue(displayMeta.getDisplayName().contains("Carbon Rod"));
+
+        // Test custom provider resolution for rod
+        providerManager.registerProvider(new ItemTextureProvider() {
+            @Override
+            public String getProviderName() {
+                return "rod_mock_provider";
+            }
+
+            @Override
+            public boolean isAvailable() {
+                return true;
+            }
+
+            @Override
+            public ItemStack buildItem(String itemId) {
+                if ("special_rod_id".equals(itemId)) {
+                    ItemStack mock = new ItemStack(Material.FISHING_ROD);
+                    ItemMeta m = mock.getItemMeta();
+                    m.setDisplayName("§bMock Special Rod Texture");
+                    mock.setItemMeta(m);
+                    return mock;
+                }
+                return null;
+            }
+        });
+
+        id.nusafishing.fishing.model.FishingRod mockRod = new id.nusafishing.fishing.model.FishingRod(
+                "mock_special_rod",
+                "Mock Special Rod",
+                "Rod with mock texture provider",
+                Material.FISHING_ROD,
+                0,
+                "rod_mock_provider",
+                "special_rod_id",
+                500,
+                0.4,
+                id.nusafishing.fishing.model.FishingRod.RodTier.EXPERT,
+                false,
+                "",
+                25000.0,
+                4,
+                1000.0
+        );
+
+        ItemStack resolvedRod = mockRod.createItemStack();
+        assertNotNull(resolvedRod);
+        ItemMeta resolvedMeta = resolvedRod.getItemMeta();
+        assertNotNull(resolvedMeta);
+        assertTrue(resolvedMeta.getDisplayName().contains("Mock Special Rod"));
+        assertEquals("mock_special_rod", resolvedMeta.getPersistentDataContainer().get(rodIdKey, PersistentDataType.STRING));
+    }
 }

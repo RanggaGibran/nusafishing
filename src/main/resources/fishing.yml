@@ -2,7 +2,63 @@
 # Konfigurasi untuk alat pancing, umpan, dan ikan-ikan
 
 # Pengaturan alat pancing
+# Opsi tekstur custom:
+# - texture_provider: vanilla (default), nexo, oraxen, atau itemsadder
+# - texture_id: ID item pada plugin tekstur (contoh: carbon_rod untuk Nexo, mythic_rod untuk Oraxen, nusafishing:poseidon_rod untuk ItemsAdder)
+# - material: Material Bukkit sebagai fallback jika plugin tekstur tidak aktif (default: FISHING_ROD)
+# - custom_model_data: Custom Model Data sebagai fallback jika menggunakan vanilla / resource pack tradisional
 fishing_rods:
+  # Contoh pancingan custom Nexo
+  nexo_carbon_rod:
+    name: "Pancingan Carbon Nexo"
+    description: "Pancingan serat karbon berteknologi tinggi dari Nexo"
+    texture_provider: nexo
+    texture_id: "carbon_rod"
+    material: FISHING_ROD
+    custom_model_data: 1010
+    durability: 400
+    stamina_modifier: 0.45
+    tier: ADVANCED
+    special_ability: true
+    ability_description: "15% kesempatan mendapat ikan tier lebih tinggi"
+    price: 35000
+    lure_level: 3
+    max_weight_capacity: 750.0
+
+  # Contoh pancingan custom Oraxen
+  oraxen_mythic_rod:
+    name: "Pancingan Mistik Oraxen"
+    description: "Pancingan bertuah dengan tekstur dari Oraxen"
+    texture_provider: oraxen
+    texture_id: "mythic_rod"
+    material: FISHING_ROD
+    custom_model_data: 1020
+    durability: 600
+    stamina_modifier: 0.35
+    tier: EXPERT
+    special_ability: true
+    ability_description: "25% kesempatan double catch"
+    price: 90000
+    lure_level: 4
+    max_weight_capacity: 3500.0
+
+  # Contoh pancingan custom ItemsAdder
+  ia_poseidon_rod:
+    name: "Pancingan Poseidon ItemsAdder"
+    description: "Pancingan legendaris bertenaga samudra dari ItemsAdder"
+    texture_provider: itemsadder
+    texture_id: "nusafishing:poseidon_rod"
+    material: FISHING_ROD
+    custom_model_data: 1030
+    durability: 1200
+    stamina_modifier: 0.25
+    tier: MASTER
+    special_ability: true
+    ability_description: "10% kesempatan mendapat ikan legendaris"
+    price: 300000
+    lure_level: 5
+    max_weight_capacity: 15000.0
+
   basic_rod:
     name: "Pancingan Bambu"
     description: "Pancingan sederhana dari bambu"

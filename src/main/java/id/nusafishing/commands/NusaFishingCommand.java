@@ -605,34 +605,7 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
         }
         
         // Create the fishing rod item
-        ItemStack rodItem = new ItemBuilder(Material.FISHING_ROD)
-                .name(rod.getTier().getColor() + rod.getName() + " §7[" + rod.getTier().getDisplayName() + "]")
-                .lore("§8" + rod.getDescription())
-                .lore("")
-                .lore("§7Ketahanan: §f" + rod.getDurability() + "/" + rod.getDurability())
-                .lore("§7Stamina: §f" + (rod.getStaminaModifier() < 1.0 ? 
-                        "-" + (int)((1.0 - rod.getStaminaModifier()) * 100) + "%" : 
-                        "+" + (int)((rod.getStaminaModifier() - 1.0) * 100) + "%"))
-                .lore("§7Tier: " + rod.getTier().getColor() + rod.getTier().getDisplayName())
-                .lore("§7Quality Boost: §f+" + (int)((rod.getQualityBoost() - 1.0) * 100) + "%")
-                .lore("§7Lure: §f" + rod.getLureLevel())
-                .lore("")
-                .lore(rod.hasSpecialAbility() ? "§e✦ " + rod.getSpecialAbilityDescription() : "")
-                .lore("")
-                .lore("§8ID: " + rodId)
-                .customModelData(rod.getCustomModelData())
-                .enchant(Enchantment.LUCK_OF_THE_SEA, 1)
-                .enchant(Enchantment.LURE, rod.getLureLevel())
-                .flag(ItemFlag.HIDE_ENCHANTS)
-                .flag(ItemFlag.HIDE_ATTRIBUTES)
-                .build();
-        
-        // Store rod ID and durability in persistent data
-        ItemMeta meta = rodItem.getItemMeta();
-        PersistentDataContainer container = meta.getPersistentDataContainer();
-        container.set(new NamespacedKey(plugin, ROD_ID_KEY), PersistentDataType.STRING, rodId);
-        container.set(new NamespacedKey(plugin, ROD_DURABILITY_KEY), PersistentDataType.INTEGER, rod.getDurability());
-        rodItem.setItemMeta(meta);
+        ItemStack rodItem = rod.createItemStack();
         
         // Set amount and give to player
         rodItem.setAmount(amount);
