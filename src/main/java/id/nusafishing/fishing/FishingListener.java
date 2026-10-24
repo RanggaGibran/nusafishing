@@ -136,7 +136,12 @@ public class FishingListener implements Listener {
             // Otherwise, for vanilla rods with no active minigame, try to complete normally
             if (!isPlayerInMinigame(player) && customRod == null) {
                 // Try to process a catch for vanilla rod if no minigame is active
-                CustomFish fish = fishingManager.selectRandomFish(player, null);
+                UUID playerId = player.getUniqueId();
+                FishingBait bait = activeBaits.remove(playerId);
+                if (bait != null) {
+                    bait.consumeUse(player);
+                }
+                CustomFish fish = fishingManager.selectRandomFish(player, null, bait);
                 if (fish != null) {
                     player.getInventory().addItem(fish.createItemStack());
                     player.sendMessage("§aKamu menangkap §f" + fish.getName() + "§a!");
@@ -146,6 +151,8 @@ public class FishingListener implements Listener {
                     removePlayerFishingHook(player);
                 }
             }
+        } else if (event.getState() == State.REEL_IN || event.getState() == State.FAILED_ATTEMPT || event.getState() == State.IN_GROUND) {
+            activeBaits.remove(player.getUniqueId());
         }
     }
     
@@ -202,28 +209,22 @@ public class FishingListener implements Listener {
             
             // Terapkan boost lure ke fishing hook
             FishHook hook = event.getHook();
-            
-            // Hitung level lure dari rod + efek dari bait
             int baseLureLevel = customRod != null ? customRod.getLureLevel() : 0;
+            int extraLure = (int) Math.max(0, Math.min(5, Math.round(selectedBait.getAttractionModifier() - 1.0)));
+            int totalLure = baseLureLevel + extraLure;
             
-            // Konversi daya tarik umpan ke tambahan level lure (max +3)
-            int extraLure = (int)Math.min(3, (selectedBait.getAttractionModifier() - 1.0) * 2);
-            
-            // Terapkan total lure level - using compatible methods
-            try {
-                // Try to use the modern method if available
-                hook.getClass().getMethod("setLureTime", int.class)
-                    .invoke(hook, (baseLureLevel + extraLure) * 20); // Multiply by ticks
-            } catch (Exception e1) {
+            if (hook != null && totalLure > 0) {
+                int minWait = Math.max(20, 100 - (totalLure * 15));
+                int maxWait = Math.max(minWait + 20, 600 - (totalLure * 60));
                 try {
-                    // If that doesn't work, try setting the wait time directly
-                    // More wait time = less effective lure
-                    int tickMultiplier = 100 - ((baseLureLevel + extraLure) * 10);
-                    hook.getClass().getMethod("setMinWaitTime", int.class)
-                        .invoke(hook, Math.max(10, tickMultiplier));
-                } catch (Exception e2) {
-                    // If all fails, just log but continue
-                    plugin.getLogger().warning("Could not apply lure boost: " + e2.getMessage());
+                    hook.setWaitTime(minWait, maxWait);
+                } catch (Throwable t1) {
+                    try {
+                        hook.setMinWaitTime(minWait);
+                        hook.setMaxWaitTime(maxWait);
+                        hook.setWaitTime((minWait + maxWait) / 2);
+                    } catch (Throwable ignored) {
+                    }
                 }
             }
             
@@ -298,7 +299,7 @@ public class FishingListener implements Listener {
         
         // Get active bait
         UUID playerId = player.getUniqueId();
-        FishingBait bait = activeBaits.get(playerId);
+        FishingBait bait = activeBaits.remove(playerId);
         
         // Consume bait if available
         if (bait != null) {
@@ -313,8 +314,8 @@ public class FishingListener implements Listener {
             }
         }
         
-        // Select a random fish based on player's location, rod, bait, etc.
-        CustomFish fish = fishingManager.selectRandomFish(player, customRod);
+        // Select a random fish based on player's location, rod, and active bait
+        CustomFish fish = fishingManager.selectRandomFish(player, customRod, bait);
         
         // Debug message to help diagnose the issue
         if (fish == null) {
@@ -338,33 +339,14 @@ public class FishingListener implements Listener {
     }
     
     private boolean consumeBaitFromInventory(Player player, FishingBait bait) {
-        // First, set this player as the last user
-        bait.setLastUser(player);
-        
-        // Cek off-hand terlebih dahulu
-        ItemStack offHandItem = player.getInventory().getItemInOffHand();
-        if (offHandItem != null && isSameBait(offHandItem, bait)) {
-            return consumeBaitItem(player, offHandItem, player.getInventory().getItemInOffHand());
-        }
-        
-        // Cek seluruh inventory
-        for (int i = 0; i < player.getInventory().getSize(); i++) {
-            ItemStack item = player.getInventory().getItem(i);
-            if (item != null && isSameBait(item, bait)) {
-                return consumeBaitItem(player, item, i);
-            }
-        }
-        
-        return false;
+        if (player == null || bait == null) return false;
+        return bait.consumeUse(player);
     }
     
     private boolean isSameBait(ItemStack item, FishingBait bait) {
-        if (item.getType() != bait.getMaterial()) return false;
-        
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null || !meta.hasCustomModelData()) return false;
-        
-        return meta.getCustomModelData() == bait.getCustomModelData();
+        if (item == null || bait == null) return false;
+        FishingBait itemBait = fishingManager.getBaitFromItem(item);
+        return itemBait != null && itemBait.getId().equalsIgnoreCase(bait.getId());
     }
     
     private boolean consumeBaitItem(Player player, ItemStack item, int inventorySlot) {

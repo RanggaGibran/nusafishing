@@ -58,17 +58,85 @@ public final class CustomModelDataHelper {
                 if (component != null) {
                     SET_FLOATS_METHOD.invoke(component, Collections.singletonList((float) customModelData));
                     SET_COMPONENT_METHOD.invoke(meta, component);
-                    return;
                 }
             } catch (Throwable ignored) {
-                // Fall back to integer method if component invocation encounters any issue
             }
         }
 
-        // Fallback for pre-1.21.4 versions or fallback on error
+        // Also set legacy custom model data integer for compatibility with Bukkit getters
         try {
             meta.setCustomModelData(customModelData);
         } catch (Throwable ignored) {
         }
+    }
+
+    /**
+     * Checks if the ItemMeta has custom model data set (either via Component or legacy CMD).
+     *
+     * @param meta The item meta to check
+     * @return true if custom model data is present
+     */
+    public static boolean hasCustomModelData(ItemMeta meta) {
+        if (meta == null) {
+            return false;
+        }
+
+        if (HAS_COMPONENT_API) {
+            try {
+                Object component = GET_COMPONENT_METHOD.invoke(meta);
+                if (component != null) {
+                    Method getFloats = component.getClass().getMethod("getFloats");
+                    List<?> list = (List<?>) getFloats.invoke(component);
+                    if (list != null && !list.isEmpty()) {
+                        return true;
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+
+        try {
+            return meta.hasCustomModelData();
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    /**
+     * Retrieves the custom model data integer from ItemMeta.
+     *
+     * @param meta The item meta to inspect
+     * @return The custom model data integer, or 0 if not present
+     */
+    public static int getCustomModelData(ItemMeta meta) {
+        if (meta == null) {
+            return 0;
+        }
+
+        if (HAS_COMPONENT_API) {
+            try {
+                Object component = GET_COMPONENT_METHOD.invoke(meta);
+                if (component != null) {
+                    Method getFloats = component.getClass().getMethod("getFloats");
+                    List<?> list = (List<?>) getFloats.invoke(component);
+                    if (list != null && !list.isEmpty()) {
+                        Object first = list.get(0);
+                        if (first instanceof Number num) {
+                            return num.intValue();
+                        }
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+
+        try {
+            if (meta.hasCustomModelData()) {
+                return meta.getCustomModelData();
+            }
+        } catch (Throwable ignored) {
+        }
+
+        return 0;
     }
 }

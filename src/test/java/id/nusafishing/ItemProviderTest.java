@@ -312,4 +312,49 @@ public class ItemProviderTest {
         assertTrue(resolvedMeta.getDisplayName().contains("Mock Special Rod"));
         assertEquals("mock_special_rod", resolvedMeta.getPersistentDataContainer().get(rodIdKey, PersistentDataType.STRING));
     }
+
+    @Test
+    public void testBaitDetectionAndConsumption() {
+        id.nusafishing.fishing.model.FishingBait bait = new id.nusafishing.fishing.model.FishingBait(
+                "worm",
+                "Worm Bait",
+                "Basic earthworm bait",
+                Material.WHEAT_SEEDS,
+                2001,
+                java.util.List.of("small_carp"),
+                3.0,
+                1,
+                5,
+                10.0,
+                1.25,
+                1.20
+        );
+
+        // Test item creation
+        ItemStack baitStack = new ItemStack(Material.WHEAT_SEEDS);
+        ItemMeta meta = baitStack.getItemMeta();
+        assertNotNull(meta);
+        CustomModelDataHelper.applyCustomModelData(meta, 2001);
+        meta.getPersistentDataContainer().set(NamespacedKey.fromString("nusafishing:bait_id"), PersistentDataType.STRING, "worm");
+        baitStack.setItemMeta(meta);
+
+        // Test isThisBait and CustomModelDataHelper
+        assertTrue(bait.isThisBait(baitStack));
+        assertEquals(2001, CustomModelDataHelper.getCustomModelData(baitStack.getItemMeta()));
+
+        // Test player consumption from main inventory
+        be.seeseemelk.mockbukkit.entity.PlayerMock player = server.addPlayer();
+        player.getInventory().addItem(baitStack);
+        assertTrue(bait.consumeUse(player));
+
+        // Test consumption from off-hand
+        ItemStack offHandBait = new ItemStack(Material.WHEAT_SEEDS);
+        ItemMeta offHandMeta = offHandBait.getItemMeta();
+        CustomModelDataHelper.applyCustomModelData(offHandMeta, 2001);
+        offHandMeta.getPersistentDataContainer().set(NamespacedKey.fromString("nusafishing:bait_id"), PersistentDataType.STRING, "worm");
+        offHandBait.setItemMeta(offHandMeta);
+        player.getInventory().setItemInOffHand(offHandBait);
+
+        assertTrue(bait.consumeUse(player));
+    }
 }
