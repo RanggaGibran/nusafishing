@@ -2,8 +2,6 @@
 
 # Economy settings
 economy:
-  # Base cost for repairing 1 durability point
-  repair_cost_per_durability: 5.0
   # Tier-based repair cost multipliers
   repair_cost_multipliers:
     BASIC: 1.0
@@ -50,7 +48,6 @@ events:
     - WARM_OCEAN
     - LUKEWARM_OCEAN
     - COLD_OCEAN
-    - DEEP_WARM_OCEAN
     - DEEP_LUKEWARM_OCEAN
     - DEEP_COLD_OCEAN
     - FROZEN_OCEAN
