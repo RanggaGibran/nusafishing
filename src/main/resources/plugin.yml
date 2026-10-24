@@ -1,6 +1,6 @@
 name: nusafishing
 main: id.nusafishing.NusaFishing
-version: 1.1+dev
+version: 1.1+release
 api-version: '1.21'
 softdepend: [Vault, PlaceholderAPI, Nexo, Oraxen, ItemsAdder]
 
