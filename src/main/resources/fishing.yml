@@ -2,63 +2,26 @@
 # Konfigurasi untuk alat pancing, umpan, dan ikan-ikan
 
 # Pengaturan alat pancing
-# Opsi tekstur custom:
-# - texture_provider: vanilla (default), nexo, oraxen, atau itemsadder
-# - texture_id: ID item pada plugin tekstur (contoh: carbon_rod untuk Nexo, mythic_rod untuk Oraxen, nusafishing:poseidon_rod untuk ItemsAdder)
-# - material: Material Bukkit sebagai fallback jika plugin tekstur tidak aktif (default: FISHING_ROD)
-# - custom_model_data: Custom Model Data sebagai fallback jika menggunakan vanilla / resource pack tradisional
+# ==============================================================================
+# PANDUAN PENGGUNAAN TEKSTUR / ITEM PROVIDER (Vanilla, Nexo, Oraxen, ItemsAdder):
+# Untuk menggunakan tekstur custom pada alat pancing manapun di bawah, tambahkan:
+#   texture_provider: vanilla | nexo | oraxen | itemsadder
+#   texture_id: "<id_item>"
+#   material: FISHING_ROD       # Fallback jika plugin tekstur tidak aktif
+#   custom_model_data: 1001     # Fallback integer CMD / resource pack vanilla
+#
+# CONTOH PENERAPAN PADA ALAT PANCING (cukup terapkan pada rod yang diinginkan):
+#   # Nexo:
+#   #   texture_provider: nexo
+#   #   texture_id: "carbon_rod"
+#   # Oraxen:
+#   #   texture_provider: oraxen
+#   #   texture_id: "mythic_rod"
+#   # ItemsAdder:
+#   #   texture_provider: itemsadder
+#   #   texture_id: "nusafishing:poseidon_rod"
+# ==============================================================================
 fishing_rods:
-  # Contoh pancingan custom Nexo
-  nexo_carbon_rod:
-    name: "Pancingan Carbon Nexo"
-    description: "Pancingan serat karbon berteknologi tinggi dari Nexo"
-    texture_provider: nexo
-    texture_id: "carbon_rod"
-    material: FISHING_ROD
-    custom_model_data: 1010
-    durability: 400
-    stamina_modifier: 0.45
-    tier: ADVANCED
-    special_ability: true
-    ability_description: "15% kesempatan mendapat ikan tier lebih tinggi"
-    price: 35000
-    lure_level: 3
-    max_weight_capacity: 750.0
-
-  # Contoh pancingan custom Oraxen
-  oraxen_mythic_rod:
-    name: "Pancingan Mistik Oraxen"
-    description: "Pancingan bertuah dengan tekstur dari Oraxen"
-    texture_provider: oraxen
-    texture_id: "mythic_rod"
-    material: FISHING_ROD
-    custom_model_data: 1020
-    durability: 600
-    stamina_modifier: 0.35
-    tier: EXPERT
-    special_ability: true
-    ability_description: "25% kesempatan double catch"
-    price: 90000
-    lure_level: 4
-    max_weight_capacity: 3500.0
-
-  # Contoh pancingan custom ItemsAdder
-  ia_poseidon_rod:
-    name: "Pancingan Poseidon ItemsAdder"
-    description: "Pancingan legendaris bertenaga samudra dari ItemsAdder"
-    texture_provider: itemsadder
-    texture_id: "nusafishing:poseidon_rod"
-    material: FISHING_ROD
-    custom_model_data: 1030
-    durability: 1200
-    stamina_modifier: 0.25
-    tier: MASTER
-    special_ability: true
-    ability_description: "10% kesempatan mendapat ikan legendaris"
-    price: 300000
-    lure_level: 5
-    max_weight_capacity: 15000.0
-
   basic_rod:
     name: "Pancingan Bambu"
     description: "Pancingan sederhana dari bambu"
@@ -177,57 +140,26 @@ fishing_baits:
     weight_boost: 2.0           # Dari 1.25 menjadi 2.0 (100% boost berat)
 
 # Pengaturan ikan dengan tier
-# Opsi tekstur custom:
-# - texture_provider: vanilla (default), nexo, oraxen, atau itemsadder
-# - texture_id: ID item pada plugin tekstur (contoh: my_pack:ruby_fish untuk ItemsAdder, nexo_fish untuk Nexo, oraxen_fish untuk Oraxen)
-# - material: Material Bukkit sebagai fallback jika plugin tekstur tidak aktif (default: COD)
-# - custom_model_data: Custom Model Data sebagai fallback jika menggunakan vanilla / resource pack tradisional
+# ==============================================================================
+# PANDUAN PENGGUNAAN TEKSTUR / ITEM PROVIDER (Vanilla, Nexo, Oraxen, ItemsAdder):
+# Untuk menggunakan tekstur custom pada ikan manapun di bawah, tambahkan:
+#   texture_provider: vanilla | nexo | oraxen | itemsadder
+#   texture_id: "<id_item>"
+#   material: COD / SALMON      # Fallback jika plugin tekstur tidak aktif
+#   custom_model_data: 3001     # Fallback integer CMD / resource pack vanilla
+#
+# CONTOH PENERAPAN PADA IKAN (cukup terapkan pada ikan yang diinginkan):
+#   # Nexo:
+#   #   texture_provider: nexo
+#   #   texture_id: "koi_fish"
+#   # Oraxen:
+#   #   texture_provider: oraxen
+#   #   texture_id: "mystic_bass"
+#   # ItemsAdder:
+#   #   texture_provider: itemsadder
+#   #   texture_id: "nusafishing:abyssal_trout"
+# ==============================================================================
 fishes:
-  # Contoh integrasi custom texture Nexo
-  nexo_koi:
-    name: "Koi Emas Nexo"
-    description: "Ikan koi indah dengan tekstur dari Nexo"
-    texture_provider: nexo
-    texture_id: "koi_fish"
-    material: COD
-    custom_model_data: 3010
-    min_weight: 1.0
-    max_weight: 15.0
-    min_quality: 30
-    max_quality: 95
-    base_price: 35.0
-    tier: UNCOMMON
-
-  # Contoh integrasi custom texture Oraxen
-  oraxen_bass:
-    name: "Bass Mistis Oraxen"
-    description: "Ikan bass langka dengan tekstur dari Oraxen"
-    texture_provider: oraxen
-    texture_id: "mystic_bass"
-    material: SALMON
-    custom_model_data: 3020
-    min_weight: 5.0
-    max_weight: 40.0
-    min_quality: 40
-    max_quality: 100
-    base_price: 75.0
-    tier: RARE
-
-  # Contoh integrasi custom texture ItemsAdder
-  ia_abyssal_trout:
-    name: "Trout Palung ItemsAdder"
-    description: "Ikan bercahaya dari ItemsAdder"
-    texture_provider: itemsadder
-    texture_id: "nusafishing:abyssal_trout"
-    material: PUFFERFISH
-    custom_model_data: 3030
-    min_weight: 15.0
-    max_weight: 120.0
-    min_quality: 60
-    max_quality: 100
-    base_price: 150.0
-    tier: EPIC
-
   # Ikan tier COMMON
   small_carp:
     name: "Ikan Mas Kecil"
