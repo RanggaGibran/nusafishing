@@ -52,6 +52,18 @@ public class AuraSkillsHook {
         }
 
         try {
+            if (!Skills.FISHING.isEnabled()) {
+                return;
+            }
+
+            AuraSkillsApi api = AuraSkillsApi.get();
+            if (api == null) return;
+
+            SkillsUser user = api.getUser(player.getUniqueId());
+            if (user == null || !user.isLoaded()) {
+                return;
+            }
+
             double baseXp = plugin.getConfig().getDouble("auraskills.base_xp", 15.0);
             
             // Tier multiplier
@@ -64,15 +76,32 @@ public class AuraSkillsHook {
             
             double totalXp = (baseXp + (weightFactor * qualityFactor * 2.0)) * tierMultiplier;
             
-            AuraSkillsApi api = AuraSkillsApi.get();
-            if (api != null) {
-                SkillsUser user = api.getUser(player.getUniqueId());
-                if (user != null) {
-                    user.addSkillXp(Skills.FISHING, totalXp);
-                }
-            }
+            user.addSkillXp(Skills.FISHING, totalXp);
         } catch (Throwable t) {
             plugin.getLogger().warning("Gagal menambahkan XP AuraSkills: " + t.getMessage());
         }
+    }
+
+    /**
+     * Add direct AuraSkills fishing experience (e.g. from tournaments).
+     */
+    public void addXp(Player player, double amount) {
+        if (!available || !isEnabledInConfig() || player == null || amount <= 0) {
+            return;
+        }
+
+        try {
+            if (!Skills.FISHING.isEnabled()) {
+                return;
+            }
+
+            AuraSkillsApi api = AuraSkillsApi.get();
+            if (api == null) return;
+
+            SkillsUser user = api.getUser(player.getUniqueId());
+            if (user != null && user.isLoaded()) {
+                user.addSkillXp(Skills.FISHING, amount);
+            }
+        } catch (Throwable ignored) {}
     }
 }

@@ -94,6 +94,12 @@ public class AfkFishingManager implements Listener {
         afkPlayers.add(uuid);
         initialLocations.put(uuid, player.getLocation().clone());
 
+        // Cancel any active manual minigame cleanly
+        if (plugin.getFishingListener() != null && plugin.getFishingListener().isPlayerInMinigame(player)) {
+            player.sendMessage("§e[AFK Fishing] Menghentikan minigame manual...");
+            plugin.getFishingListener().getStrikeMinigame().endMinigameAbort(player);
+        }
+
         int luckNerfPct = (int) Math.round(getLuckNerf() * 100.0);
         int speedNerfPct = (int) Math.round(getSpeedNerf() * 100.0);
 
@@ -285,15 +291,29 @@ public class AfkFishingManager implements Listener {
                     return;
                 }
 
+                // Check and apply bait from inventory
+                FishingBait bait = null;
+                if (plugin.getFishingListener() != null) {
+                    bait = plugin.getFishingListener().selectBaitFromInventory(player);
+                    if (bait != null) {
+                        plugin.getFishingListener().setActiveBait(uuid, bait);
+                    }
+                }
+
                 // Auto launch hook
                 try {
                     FishHook hook = player.launchProjectile(FishHook.class);
                     if (hook != null) {
                         hook.setVelocity(player.getLocation().getDirection().multiply(1.25));
 
-                        // Nerf wait time (longer wait before bite)
-                        int baseMin = 100;
-                        int baseMax = 500;
+                        // Calculate lure level from rod and bait
+                        int baseLureLevel = customRod != null ? customRod.getLureLevel() : 0;
+                        int extraLure = (bait != null) ? (int) Math.max(0, Math.min(5, Math.round(bait.getAttractionModifier() - 1.0))) : 0;
+                        int totalLure = baseLureLevel + extraLure;
+
+                        // Base wait time with lure boost, then lengthened by speed nerf
+                        int baseMin = Math.max(20, 100 - (totalLure * 15));
+                        int baseMax = Math.max(baseMin + 20, 600 - (totalLure * 60));
                         int nerfedMin = (int) Math.round(baseMin * (1.0 + speedNerf));
                         int nerfedMax = (int) Math.round(baseMax * (1.0 + speedNerf));
                         try {
@@ -315,7 +335,8 @@ public class AfkFishingManager implements Listener {
                         }
 
                         player.playSound(player.getLocation(), Sound.ENTITY_FISHING_BOBBER_THROW, 1.0f, 1.0f);
-                        CompatibilityHelper.sendActionBar(player, "§a[AFK Fishing] Kail dilemparkan kembali... Menunggu gigitan.");
+                        String baitInfo = (bait != null) ? " §7(Umpan: " + bait.getName() + "§7)" : "";
+                        CompatibilityHelper.sendActionBar(player, "§a[AFK Fishing] Kail dilemparkan kembali..." + baitInfo);
                     }
                 } catch (Throwable t) {
                     player.sendMessage("§7[AFK Fishing] Lemparkan kail pancing untuk melanjutkan auto-fishing.");

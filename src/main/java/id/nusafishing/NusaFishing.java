@@ -41,6 +41,7 @@ public class NusaFishing extends JavaPlugin {
     private FishingStatisticsManager statisticsManager;
     private TournamentManager tournamentManager;
     private RewardsManager rewardsManager;
+    private FishingListener fishingListener;
     
     private BukkitTask priceUpdateTask;
     
@@ -90,7 +91,7 @@ public class NusaFishing extends JavaPlugin {
         getServer().getPluginManager().registerEvents(afkFishingManager, this);
 
         // Register listeners
-        FishingListener fishingListener = new FishingListener(this, fishingManager, staminaManager, skillManager);
+        this.fishingListener = new FishingListener(this, fishingManager, staminaManager, skillManager);
         getServer().getPluginManager().registerEvents(fishingListener, this);
         
         // Register GUI listener
@@ -212,6 +213,10 @@ public class NusaFishing extends JavaPlugin {
     public AfkFishingManager getAfkFishingManager() {
         return afkFishingManager;
     }
+
+    public FishingListener getFishingListener() {
+        return fishingListener;
+    }
     
     public void reloadAllConfigurations() {
         // Reload main config
@@ -222,6 +227,11 @@ public class NusaFishing extends JavaPlugin {
         
         // Reload event fish from config
         ConfigEventFish.loadFromConfig(this);
+
+        // Reload stamina manager config
+        if (staminaManager != null) {
+            staminaManager.loadConfig();
+        }
 
         // Recheck AuraSkills availability
         if (auraSkillsHook != null) {

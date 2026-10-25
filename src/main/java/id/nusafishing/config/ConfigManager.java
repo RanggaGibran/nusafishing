@@ -49,6 +49,10 @@ public class ConfigManager {
         FileConfiguration config = plugin.getConfig();
         if (config == null) return;
         
+        try {
+            config.options().parseComments(true);
+        } catch (Throwable ignored) {}
+        
         String currentVersion = plugin.getDescription().getVersion();
         String configVersion = config.getString("config_version", null);
         boolean modified = false;
@@ -158,6 +162,9 @@ public class ConfigManager {
         }
         
         fishingConfig = YamlConfiguration.loadConfiguration(fishingConfigFile);
+        try {
+            fishingConfig.options().parseComments(true);
+        } catch (Throwable ignored) {}
     }
     
     public void loadFishingConfig() {

@@ -63,10 +63,12 @@ public class PlayerSkillManager {
     }
     
     public void saveAllData() {
-        for (UUID playerId : fishingLevels.keySet()) {
+        Map<UUID, Integer> levelsSnapshot = new HashMap<>(fishingLevels);
+        Map<UUID, Integer> expSnapshot = new HashMap<>(fishingExperience);
+        for (UUID playerId : levelsSnapshot.keySet()) {
             String path = playerId.toString();
-            dataConfig.set(path + ".fishing_level", fishingLevels.get(playerId));
-            dataConfig.set(path + ".fishing_exp", fishingExperience.get(playerId));
+            dataConfig.set(path + ".fishing_level", levelsSnapshot.get(playerId));
+            dataConfig.set(path + ".fishing_exp", expSnapshot.get(playerId));
         }
         
         try {

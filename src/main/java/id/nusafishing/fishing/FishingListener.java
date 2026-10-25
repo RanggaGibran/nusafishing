@@ -133,52 +133,70 @@ public class FishingListener implements Listener {
             event.setCancelled(true);
             
             // If we get here during a minigame, let the minigame handle it
-            // Otherwise, for vanilla rods with no active minigame, try to complete normally
-            if (!isPlayerInMinigame(player) && customRod == null) {
-                // Try to process a catch for vanilla rod if no minigame is active
-                UUID playerId = player.getUniqueId();
-                FishingBait bait = activeBaits.remove(playerId);
-                if (bait != null) {
-                    bait.consumeUse(player);
-                }
-                CustomFish fish = fishingManager.selectRandomFish(player, null, bait);
+            if (isPlayerInMinigame(player)) {
+                return;
+            }
+
+            UUID playerId = player.getUniqueId();
+            FishingBait bait = activeBaits.remove(playerId);
+            if (bait != null) {
+                bait.consumeUse(player);
+            }
+
+            // Check if player is in AFK auto-fishing mode
+            if (plugin.getAfkFishingManager().isAfk(player)) {
+                double luckNerf = plugin.getAfkFishingManager().getLuckNerf();
+                CustomFish fish = fishingManager.selectRandomFish(player, customRod, bait, luckNerf);
                 if (fish != null) {
-                    Map<Integer, ItemStack> leftover = player.getInventory().addItem(fish.createItemStack());
-                    if (!leftover.isEmpty()) {
-                        for (ItemStack drop : leftover.values()) {
-                            player.getWorld().dropItemNaturally(player.getLocation(), drop);
-                        }
-                        player.sendMessage("§e§lPerhatian! §fInventory kamu penuh, ikan dijatuhkan ke tanah.");
-                    }
-                    player.sendMessage("§aKamu menangkap §f" + fish.getName() + "§a!");
-                    player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
-                    
-                    // Record the catch in statistics
-                    plugin.getStatisticsManager().recordFishCaught(player.getUniqueId(), fish);
-
-                    // Check for event fish catch
-                    if (fish.getId().startsWith("event_")) {
-                        plugin.getEventManager().handleEventFishCaught(player, fish);
-                    }
-
-                    // Record catch in active tournament
-                    if (plugin.getTournamentManager().isTournamentActive()) {
-                        plugin.getTournamentManager().recordCatch(player, fish);
-                    }
-
-                    // Add fishing XP based on fish quality and weight
-                    int xpGain = (int)(5 + (fish.getWeight() * fish.getQuality() / 20));
-                    plugin.getSkillManager().addFishingExp(player, xpGain);
-
-                    // Add AuraSkills XP if enabled
-                    plugin.getAuraSkillsHook().addFishingXp(player, fish);
-
-                    // Consume stamina based on fish weight
-                    staminaManager.consumeStaminaForFish(player, fish, null);
-
-                    // TAMBAHAN: Hapus fishing hook setelah berhasil menangkap ikan
                     removePlayerFishingHook(player);
+                    plugin.getAfkFishingManager().handleAfkBite(player, fish, fishingRod, customRod);
                 }
+                return;
+            }
+
+            // Process catch directly (vanilla rod or custom rod when minigame was not active)
+            CustomFish fish = fishingManager.selectRandomFish(player, customRod, bait);
+            if (fish != null) {
+                Map<Integer, ItemStack> leftover = player.getInventory().addItem(fish.createItemStack());
+                if (!leftover.isEmpty()) {
+                    for (ItemStack drop : leftover.values()) {
+                        player.getWorld().dropItemNaturally(player.getLocation(), drop);
+                    }
+                    player.sendMessage("§e§lPerhatian! §fInventory kamu penuh, ikan dijatuhkan ke tanah.");
+                }
+                player.sendMessage("§aKamu menangkap §f" + fish.getName() + "§a!");
+                player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+                
+                // Record the catch in statistics
+                plugin.getStatisticsManager().recordFishCaught(player.getUniqueId(), fish);
+
+                // Check for event fish catch
+                if (fish.getId().startsWith("event_")) {
+                    plugin.getEventManager().handleEventFishCaught(player, fish);
+                }
+
+                // Record catch in active tournament
+                if (plugin.getTournamentManager().isTournamentActive()) {
+                    plugin.getTournamentManager().recordCatch(player, fish);
+                }
+
+                // Add fishing XP based on fish quality and weight
+                int xpGain = (int)(5 + (fish.getWeight() * fish.getQuality() / 20));
+                plugin.getSkillManager().addFishingExp(player, xpGain);
+
+                // Add AuraSkills XP if enabled
+                plugin.getAuraSkillsHook().addFishingXp(player, fish);
+
+                // Consume stamina based on fish weight
+                staminaManager.consumeStaminaForFish(player, fish, customRod);
+
+                // Reduce durability if custom rod
+                if (customRod != null) {
+                    reduceDurability(player, fishingRod, DURABILITY_LOSS_ON_CATCH);
+                }
+
+                // TAMBAHAN: Hapus fishing hook setelah berhasil menangkap ikan
+                removePlayerFishingHook(player);
             }
         } else if (event.getState() == State.REEL_IN || event.getState() == State.FAILED_ATTEMPT || event.getState() == State.IN_GROUND) {
             activeBaits.remove(player.getUniqueId());
@@ -293,7 +311,7 @@ public class FishingListener implements Listener {
         lastCastTime.put(playerId, now);
     }
     
-    private FishingBait selectBaitFromInventory(Player player) {
+    public FishingBait selectBaitFromInventory(Player player) {
         // Prioritaskan umpan yang ada di off hand
         ItemStack offHandItem = player.getInventory().getItemInOffHand();
         FishingBait offHandBait = fishingManager.getBaitFromItem(offHandItem);
@@ -311,6 +329,20 @@ public class FishingListener implements Listener {
         }
         
         return null;
+    }
+
+    public void setActiveBait(UUID playerId, FishingBait bait) {
+        if (playerId != null && bait != null) {
+            activeBaits.put(playerId, bait);
+        }
+    }
+
+    public FishingBait getActiveBait(UUID playerId) {
+        return playerId != null ? activeBaits.get(playerId) : null;
+    }
+
+    public FishingBait removeActiveBait(UUID playerId) {
+        return playerId != null ? activeBaits.remove(playerId) : null;
     }
     
     private void handleFishBite(PlayerFishEvent event, Player player, ItemStack fishingRod, FishingRod customRod) {
@@ -630,9 +662,13 @@ public class FishingListener implements Listener {
     }
     
     // Helper method to check if player is in minigame
-    private boolean isPlayerInMinigame(Player player) {
+    public boolean isPlayerInMinigame(Player player) {
         return player.getMetadata("NF_InMinigame").stream()
                .anyMatch(metaValue -> metaValue.asBoolean());
+    }
+
+    public StrikeMinigame getStrikeMinigame() {
+        return strikeMinigame;
     }
     
     /**
