@@ -2,7 +2,8 @@ name: nusafishing
 main: id.nusafishing.NusaFishing
 version: ${version}
 website: https://github.com/RanggaGibran/nusafishing
-author: ["RanggaGibran", "Asano Saryu"]
+author: "RanggaGibran"
+contributors: ["Asano Saryu"]
 api-version: '1.21'
 softdepend: [Vault, PlaceholderAPI, Nexo, Oraxen, ItemsAdder, AuraSkills]
 
