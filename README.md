@@ -4,7 +4,7 @@
 
 ![Java](https://img.shields.io/badge/Java-21%20%7C%2025%20(MR--JAR)-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
 ![Paper](https://img.shields.io/badge/Platform-Paper%20%2F%20Purpur%201.21.x+-1E88E5?style=for-the-badge&logo=minecraft&logoColor=white)
-![Release](https://img.shields.io/badge/Release-v1.2%2Bbeta-00C853?style=for-the-badge)
+![Release](https://img.shields.io/badge/Release-v1.2%2Bdev%2B02b8ebb-00C853?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-GNU%20GPL%20v2-blue?style=for-the-badge)
 
 **An enterprise-grade, RPG-styled fishing system engineered for modern Spigot, Paper, and Purpur Minecraft servers.**
@@ -203,13 +203,17 @@ fishes:
 
 ### 1. Fish Tiers & Value Multipliers
 
-| Tier | Color | Price Multiplier | Description |
+| Tier | Default Color | Price Multiplier | Description |
 |---|---|---|---|
 | **COMMON** | Gray (`§7`) | `1.0x` | Standard fish found commonly in all bodies of water. |
 | **UNCOMMON** | Green (`§a`) | `1.5x` | Healthier catches with moderate market value. |
 | **RARE** | Blue (`§9`) | `2.0x` | Elusive species found with good bait or advanced rods. |
 | **EPIC** | Purple (`§5`) | `3.0x` | Heavy, prize-worthy specimens. |
-| **LEGENDARY** | Gold (`§6`) | `5.0x` | Mythic catches capable of triggering server notifications. |
+| **LEGENDARY** | Gold (`§6`) | `5.0x` | Legendary catches capable of triggering server notifications. |
+| **MYTHIC** | Red (`§c`) | `8.0x` | Ancient entities and sea deities with guaranteed 3x minimum base value. |
+
+> [!NOTE]
+> All tier colors for both fish and rods are fully customizable in `config.yml` under the `tier_colors:` section (supporting standard Minecraft color codes like `&7`, `&a`, `&c`, etc.).
 
 ### 2. Procedural Weight & Diminishing Scaling
 Fish weights scale dynamically:
@@ -261,6 +265,7 @@ NusaFishing registers the `%nusafishing_*%` expansion automatically when Placeho
 |---|---|
 | `%nusafishing_fish_caught%` | Total number of fish caught by the player |
 | `%nusafishing_legendary_caught%` | Total legendary fish caught by the player |
+| `%nusafishing_mythic_caught%` | Total mythic fish caught by the player |
 | `%nusafishing_event_fish_caught%` | Total event fish caught by the player |
 | `%nusafishing_fishing_level%` | Player's fishing skill level |
 | `%nusafishing_fishing_exp%` | Player's current fishing experience |
@@ -292,17 +297,17 @@ cd nusafishing
 
 The compiled multi-release artifact will be generated in:
 ```
-build/libs/nusafishing-1.2+beta.jar
+build/libs/nusafishing-1.2+dev+02b8ebb.jar
 ```
 
 ### Verifying Multi-Release Bytecode
 
 ```bash
 # Verify base bytecode class version (major 65 = Java 21)
-javap -verbose -cp build/libs/nusafishing-1.2+beta.jar id.nusafishing.NusaFishing | grep "major version"
+javap -verbose -cp build/libs/nusafishing-1.2+dev+02b8ebb.jar id.nusafishing.NusaFishing | grep "major version"
 
 # Verify version 25 bytecode (major 69 = Java 25)
-unzip -p build/libs/nusafishing-1.2+beta.jar META-INF/versions/25/id/nusafishing/compat/PlatformHelper.class > /tmp/PlatformHelper25.class
+unzip -p build/libs/nusafishing-1.2+dev+02b8ebb.jar META-INF/versions/25/id/nusafishing/compat/PlatformHelper.class > /tmp/PlatformHelper25.class
 javap -verbose /tmp/PlatformHelper25.class | grep "major version"
 ```
 
