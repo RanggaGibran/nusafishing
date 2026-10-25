@@ -605,34 +605,7 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
         }
         
         // Create the fishing rod item
-        ItemStack rodItem = new ItemBuilder(Material.FISHING_ROD)
-                .name(rod.getTier().getColor() + rod.getName() + " §7[" + rod.getTier().getDisplayName() + "]")
-                .lore("§8" + rod.getDescription())
-                .lore("")
-                .lore("§7Ketahanan: §f" + rod.getDurability() + "/" + rod.getDurability())
-                .lore("§7Stamina: §f" + (rod.getStaminaModifier() < 1.0 ? 
-                        "-" + (int)((1.0 - rod.getStaminaModifier()) * 100) + "%" : 
-                        "+" + (int)((rod.getStaminaModifier() - 1.0) * 100) + "%"))
-                .lore("§7Tier: " + rod.getTier().getColor() + rod.getTier().getDisplayName())
-                .lore("§7Quality Boost: §f+" + (int)((rod.getQualityBoost() - 1.0) * 100) + "%")
-                .lore("§7Lure: §f" + rod.getLureLevel())
-                .lore("")
-                .lore(rod.hasSpecialAbility() ? "§e✦ " + rod.getSpecialAbilityDescription() : "")
-                .lore("")
-                .lore("§8ID: " + rodId)
-                .customModelData(rod.getCustomModelData())
-                .enchant(Enchantment.LUCK, 1)
-                .enchant(Enchantment.LURE, rod.getLureLevel())
-                .flag(ItemFlag.HIDE_ENCHANTS)
-                .flag(ItemFlag.HIDE_ATTRIBUTES)
-                .build();
-        
-        // Store rod ID and durability in persistent data
-        ItemMeta meta = rodItem.getItemMeta();
-        PersistentDataContainer container = meta.getPersistentDataContainer();
-        container.set(new NamespacedKey(plugin, ROD_ID_KEY), PersistentDataType.STRING, rodId);
-        container.set(new NamespacedKey(plugin, ROD_DURABILITY_KEY), PersistentDataType.INTEGER, rod.getDurability());
-        rodItem.setItemMeta(meta);
+        ItemStack rodItem = rod.createItemStack();
         
         // Set amount and give to player
         rodItem.setAmount(amount);
@@ -657,37 +630,8 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
             return false;
         }
         
-        // Create the bait item
-        ItemStack baitItem = new ItemBuilder(bait.getMaterial())
-                .name("§a" + bait.getName())
-                .lore("§8" + bait.getDescription())
-                .lore("")
-                .lore("§e§l✦ Efek Umpan:")
-                .lore("  §7• Daya tarik: §a+" + (int)((bait.getAttractionModifier() - 1.0) * 100) + "%")
-                .lore("  §7• Boost kualitas: §a+" + (int)((bait.getQualityBoost() - 1.0) * 100) + "%")
-                .lore("  §7• Boost berat: §a+" + (int)((bait.getWeightBoost() - 1.0) * 100) + "%") 
-                .lore("  §7• Tier boost: §a+" + (bait.getTierBoost() * 2) + " §7tingkat")
-                .lore("")
-                .lore("§b§l✦ Ikan Target:")
-                .lore("  §7" + (bait.getValidFish().isEmpty() ? "Semua ikan" : formatFishNames(bait.getValidFish())))
-                .lore("  §7(§dBonus 10x §7untuk ikan yang sesuai)")
-                .lore("")
-                .lore("§8Penggunaan: §f" + bait.getUsesPerItem() + "x")
-                .lore("§8ID: " + baitId)
-                .customModelData(bait.getCustomModelData())
-                .enchant(Enchantment.LUCK, 1)
-                .flag(ItemFlag.HIDE_ENCHANTS)
-                .flag(ItemFlag.HIDE_ATTRIBUTES)
-                .build();
-        
-        // Store bait ID in persistent data
-        ItemMeta meta = baitItem.getItemMeta();
-        PersistentDataContainer container = meta.getPersistentDataContainer();
-        container.set(new NamespacedKey(plugin, BAIT_ID_KEY), PersistentDataType.STRING, baitId);
-        baitItem.setItemMeta(meta);
-        
-        // Set amount and give to player
-        baitItem.setAmount(amount);
+        // Create the bait item and give to player
+        ItemStack baitItem = bait.createItemStack(amount);
         player.getInventory().addItem(baitItem);
         
         player.sendMessage("§aKamu mendapatkan §f" + amount + "x §a" + bait.getName() + "§a!");
@@ -814,8 +758,8 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
         int totalFishSold = 0;
         
         if (sellAll) {
-            // Sell all fish in inventory
-            ItemStack[] contents = player.getInventory().getContents();
+            // Sell all fish in storage inventory
+            ItemStack[] contents = player.getInventory().getStorageContents();
             Map<String, Integer> fishSold = new HashMap<>();
             
             for (int i = 0; i < contents.length; i++) {
@@ -893,16 +837,28 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
     private CustomFish getFishFromItem(ItemStack item) {
         if (item == null) return null;
         ItemMeta meta = item.getItemMeta();
-        if (meta == null || !meta.hasCustomModelData()) return null;
+        if (meta == null) return null;
 
         PersistentDataContainer container = meta.getPersistentDataContainer();
-        NamespacedKey fishIdKey = new NamespacedKey(plugin, "fish_id");
-        NamespacedKey weightKey = new NamespacedKey(plugin, "fish_weight");
-        NamespacedKey qualityKey = new NamespacedKey(plugin, "fish_quality");
+        NamespacedKey cleanFishIdKey = NamespacedKey.fromString("nusafishing:fish_id");
+        NamespacedKey legacyFishIdKey = new NamespacedKey(plugin, "fish_id");
 
-        if (!container.has(fishIdKey, PersistentDataType.STRING)) return null;
+        String fishId = null;
+        if (cleanFishIdKey != null && container.has(cleanFishIdKey, PersistentDataType.STRING)) {
+            fishId = container.get(cleanFishIdKey, PersistentDataType.STRING);
+        } else if (container.has(legacyFishIdKey, PersistentDataType.STRING)) {
+            fishId = container.get(legacyFishIdKey, PersistentDataType.STRING);
+        }
 
-        String fishId = container.get(fishIdKey, PersistentDataType.STRING);
+        if (fishId == null) return null;
+
+        NamespacedKey cleanWeightKey = NamespacedKey.fromString("nusafishing:fish_weight");
+        NamespacedKey legacyWeightKey = new NamespacedKey(plugin, "fish_weight");
+        NamespacedKey cleanQualityKey = NamespacedKey.fromString("nusafishing:fish_quality");
+        NamespacedKey legacyQualityKey = new NamespacedKey(plugin, "fish_quality");
+        NamespacedKey cleanTierKey = NamespacedKey.fromString("nusafishing:fish_tier");
+        NamespacedKey legacyTierKey = new NamespacedKey(plugin, "fish_tier");
+
         CustomFish templateFish = plugin.getConfigManager().getCustomFishes().get(fishId);
         if (templateFish == null) return null;
 
@@ -912,6 +868,8 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
             templateFish.getDescription(),
             templateFish.getMaterial(),
             templateFish.getCustomModelData(),
+            templateFish.getTextureProvider(),
+            templateFish.getTextureId(),
             templateFish.getMinWeight(),
             templateFish.getMaxWeight(),
             templateFish.getMinQuality(),
@@ -920,30 +878,33 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
             templateFish.getBaseTier() // Pass the base tier from template fish
         );
 
-        double weight = container.getOrDefault(weightKey, PersistentDataType.DOUBLE, templateFish.getMinWeight());
-        int quality = container.getOrDefault(qualityKey, PersistentDataType.INTEGER, templateFish.getMinQuality());
-        
-        // Baca data tier yang tersimpan (atau gunakan base tier jika tidak ada)
-        NamespacedKey tierKey = new NamespacedKey(plugin, "fish_tier");
-        int tierOrdinal = container.getOrDefault(tierKey, PersistentDataType.INTEGER, templateFish.getBaseTier().ordinal());
-        CustomFish.FishTier actualTier = CustomFish.FishTier.values()[tierOrdinal];
-
-        try {
-            java.lang.reflect.Field weightField = CustomFish.class.getDeclaredField("weight");
-            java.lang.reflect.Field qualityField = CustomFish.class.getDeclaredField("quality");
-            java.lang.reflect.Field tierField = CustomFish.class.getDeclaredField("actualTier");
-            
-            weightField.setAccessible(true);
-            qualityField.setAccessible(true);
-            tierField.setAccessible(true);
-            
-            weightField.set(fish, weight);
-            qualityField.set(fish, quality);
-            tierField.set(fish, actualTier); // Tambahkan ini untuk mengatur tier
-        } catch (Exception e) {
-            plugin.getLogger().warning("Error setting fish properties: " + e.getMessage());
+        double weight = templateFish.getMinWeight();
+        if (cleanWeightKey != null && container.has(cleanWeightKey, PersistentDataType.DOUBLE)) {
+            weight = container.get(cleanWeightKey, PersistentDataType.DOUBLE);
+        } else if (container.has(legacyWeightKey, PersistentDataType.DOUBLE)) {
+            weight = container.get(legacyWeightKey, PersistentDataType.DOUBLE);
         }
 
+        int quality = templateFish.getMinQuality();
+        if (cleanQualityKey != null && container.has(cleanQualityKey, PersistentDataType.INTEGER)) {
+            quality = container.get(cleanQualityKey, PersistentDataType.INTEGER);
+        } else if (container.has(legacyQualityKey, PersistentDataType.INTEGER)) {
+            quality = container.get(legacyQualityKey, PersistentDataType.INTEGER);
+        }
+        
+        // Baca data tier yang tersimpan (atau gunakan base tier jika tidak ada)
+        int tierOrdinal = templateFish.getBaseTier().ordinal();
+        if (cleanTierKey != null && container.has(cleanTierKey, PersistentDataType.INTEGER)) {
+            tierOrdinal = container.get(cleanTierKey, PersistentDataType.INTEGER);
+        } else if (container.has(legacyTierKey, PersistentDataType.INTEGER)) {
+            tierOrdinal = container.get(legacyTierKey, PersistentDataType.INTEGER);
+        }
+        if (tierOrdinal < 0 || tierOrdinal >= CustomFish.FishTier.values().length) {
+            tierOrdinal = templateFish.getBaseTier().ordinal();
+        }
+        CustomFish.FishTier actualTier = CustomFish.FishTier.values()[tierOrdinal];
+
+        fish.applyCaughtData(weight, quality, actualTier);
         return fish;
     }
     

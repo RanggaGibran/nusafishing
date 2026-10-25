@@ -2,6 +2,25 @@
 # Konfigurasi untuk alat pancing, umpan, dan ikan-ikan
 
 # Pengaturan alat pancing
+# ==============================================================================
+# PANDUAN PENGGUNAAN TEKSTUR / ITEM PROVIDER (Vanilla, Nexo, Oraxen, ItemsAdder):
+# Untuk menggunakan tekstur custom pada alat pancing manapun di bawah, tambahkan:
+#   texture_provider: vanilla | nexo | oraxen | itemsadder
+#   texture_id: "<id_item>"
+#   material: FISHING_ROD       # Fallback jika plugin tekstur tidak aktif
+#   custom_model_data: 1001     # Fallback integer CMD / resource pack vanilla
+#
+# CONTOH PENERAPAN PADA ALAT PANCING (cukup terapkan pada rod yang diinginkan):
+#   # Nexo:
+#   #   texture_provider: nexo
+#   #   texture_id: "carbon_rod"
+#   # Oraxen:
+#   #   texture_provider: oraxen
+#   #   texture_id: "mythic_rod"
+#   # ItemsAdder:
+#   #   texture_provider: itemsadder
+#   #   texture_id: "nusafishing:poseidon_rod"
+# ==============================================================================
 fishing_rods:
   basic_rod:
     name: "Pancingan Bambu"
@@ -66,6 +85,19 @@ fishing_rods:
     lure_level: 5
     max_weight_capacity: 10000.0
 
+  mythic_rod:
+    name: "Pancingan Trisula Samudera"
+    description: "Pancingan sakti yang dialiri kekuatan samudra purba"
+    custom_model_data: 1006
+    durability: 2500
+    stamina_modifier: 0.2
+    tier: MYTHIC
+    special_ability: true
+    ability_description: "10% kesempatan mendapat ikan mistik"
+    price: 750000
+    lure_level: 6
+    max_weight_capacity: 50000.0
+
 # Pengaturan umpan
 fishing_baits:
   worm:
@@ -121,6 +153,25 @@ fishing_baits:
     weight_boost: 2.0           # Dari 1.25 menjadi 2.0 (100% boost berat)
 
 # Pengaturan ikan dengan tier
+# ==============================================================================
+# PANDUAN PENGGUNAAN TEKSTUR / ITEM PROVIDER (Vanilla, Nexo, Oraxen, ItemsAdder):
+# Untuk menggunakan tekstur custom pada ikan manapun di bawah, tambahkan:
+#   texture_provider: vanilla | nexo | oraxen | itemsadder
+#   texture_id: "<id_item>"
+#   material: COD / SALMON      # Fallback jika plugin tekstur tidak aktif
+#   custom_model_data: 3001     # Fallback integer CMD / resource pack vanilla
+#
+# CONTOH PENERAPAN PADA IKAN (cukup terapkan pada ikan yang diinginkan):
+#   # Nexo:
+#   #   texture_provider: nexo
+#   #   texture_id: "koi_fish"
+#   # Oraxen:
+#   #   texture_provider: oraxen
+#   #   texture_id: "mystic_bass"
+#   # ItemsAdder:
+#   #   texture_provider: itemsadder
+#   #   texture_id: "nusafishing:abyssal_trout"
+# ==============================================================================
 fishes:
   # Ikan tier COMMON
   small_carp:
@@ -699,6 +750,18 @@ fishes:
     max_quality: 100
     base_price: 700.0
     tier: LEGENDARY
+
+  samudera_mythic:
+    name: "Naga Samudra Purba"
+    description: "Entitas mistik penjaga palung terdalam yang melegenda"
+    material: PUFFERFISH
+    custom_model_data: 4009
+    min_weight: 1000.0
+    max_weight: 5000.0
+    min_quality: 95
+    max_quality: 100
+    base_price: 2500.0
+    tier: MYTHIC
 
 # Pengaturan lokasi spesial
 special_locations:

@@ -1,9 +1,24 @@
 # NusaFishing Main Configuration
 
+# Tier color customization (Supports Minecraft color codes e.g. &7, &a, &c, etc.)
+tier_colors:
+  fish:
+    COMMON: "&7"
+    UNCOMMON: "&a"
+    RARE: "&9"
+    EPIC: "&5"
+    LEGENDARY: "&6"
+    MYTHIC: "&c"
+  rod:
+    BASIC: "&7"
+    INTERMEDIATE: "&a"
+    ADVANCED: "&9"
+    EXPERT: "&5"
+    MASTER: "&6"
+    MYTHIC: "&c"
+
 # Economy settings
 economy:
-  # Base cost for repairing 1 durability point
-  repair_cost_per_durability: 5.0
   # Tier-based repair cost multipliers
   repair_cost_multipliers:
     BASIC: 1.0
@@ -11,6 +26,7 @@ economy:
     ADVANCED: 2.5
     EXPERT: 4.0
     MASTER: 6.0
+    MYTHIC: 8.0
   # Cost for repairing 1 durability point
   repair_cost_per_durability: 5.0  # Dari 2.0 → 5.0 (2.5x lipat)
   # Fish price multiplier (1.0 = normal price)
@@ -50,7 +66,6 @@ events:
     - WARM_OCEAN
     - LUKEWARM_OCEAN
     - COLD_OCEAN
-    - DEEP_WARM_OCEAN
     - DEEP_LUKEWARM_OCEAN
     - DEEP_COLD_OCEAN
     - FROZEN_OCEAN
@@ -61,6 +76,8 @@ events:
     - SNOWY_BEACH
 
 # Event fish configuration
+# Mendukung texture_provider (vanilla, nexo, oraxen, itemsadder) dan texture_id
+# Material dan custom_model_data berfungsi sebagai fallback jika plugin tekstur tidak tersedia
 event_fish:
   event_ancient_leviathan:
     name: "Leviathan Kuno"

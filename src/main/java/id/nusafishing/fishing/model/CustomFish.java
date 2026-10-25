@@ -13,6 +13,7 @@ import org.bukkit.NamespacedKey;
 
 import id.nusafishing.util.ItemBuilder;
 import id.nusafishing.NusaFishing;
+import id.nusafishing.compat.CustomModelDataHelper;
 
 public class CustomFish {
     // Definisikan tier ikan
@@ -21,19 +22,28 @@ public class CustomFish {
         UNCOMMON("§a", 1.5, "Tidak Biasa"),
         RARE("§9", 2.0, "Langka"),
         EPIC("§5", 3.0, "Epik"),
-        LEGENDARY("§6", 5.0, "Legendaris");
+        LEGENDARY("§6", 5.0, "Legendaris"),
+        MYTHIC("§c", 8.0, "Mistik");
         
-        private final String color;
+        private final String defaultColor;
         private final double priceMultiplier;
         private final String displayName;
         
-        FishTier(String color, double priceMultiplier, String displayName) {
-            this.color = color;
+        FishTier(String defaultColor, double priceMultiplier, String displayName) {
+            this.defaultColor = defaultColor;
             this.priceMultiplier = priceMultiplier;
             this.displayName = displayName;
         }
         
-        public String getColor() { return color; }
+        public String getDefaultColor() { return defaultColor; }
+
+        public String getColor() {
+            if (NusaFishing.getInstance() != null && NusaFishing.getInstance().getConfigManager() != null) {
+                return NusaFishing.getInstance().getConfigManager().getFishTierColor(this);
+            }
+            return defaultColor;
+        }
+
         public double getPriceMultiplier() { return priceMultiplier; }
         public String getDisplayName() { return displayName; }
     }
@@ -45,6 +55,8 @@ public class CustomFish {
     private String description;
     private Material material;
     private int customModelData;
+    private String textureProvider; // "vanilla", "nexo", "oraxen", "itemsadder"
+    private String textureId;       // Item ID in custom provider
     private double minWeight;
     private double maxWeight;
     private int minQuality;
@@ -61,11 +73,22 @@ public class CustomFish {
                      int customModelData, double minWeight, double maxWeight,
                      int minQuality, int maxQuality, double basePrice,
                      FishTier baseTier) {
+        this(id, name, description, material, customModelData, "vanilla", null,
+             minWeight, maxWeight, minQuality, maxQuality, basePrice, baseTier);
+    }
+
+    public CustomFish(String id, String name, String description, Material material,
+                     int customModelData, String textureProvider, String textureId,
+                     double minWeight, double maxWeight,
+                     int minQuality, int maxQuality, double basePrice,
+                     FishTier baseTier) {
         this.id = id;
         this.name = name;
         this.description = description;
-        this.material = material;
+        this.material = material != null ? material : Material.COD;
         this.customModelData = customModelData;
+        this.textureProvider = (textureProvider == null || textureProvider.isBlank()) ? "vanilla" : textureProvider.trim().toLowerCase();
+        this.textureId = textureId;
         this.minWeight = minWeight;
         this.maxWeight = maxWeight;
         this.minQuality = minQuality;
@@ -77,7 +100,7 @@ public class CustomFish {
     // Create a new caught fish instance with random weight and quality
     public CustomFish createCaughtInstance(int tierBoost, double qualityBoost, double weightBoost, double maxWeight) {
         CustomFish fish = new CustomFish(id, name, description, material, customModelData,
-                minWeight, maxWeight, minQuality, maxQuality, basePrice, baseTier);
+                textureProvider, textureId, minWeight, maxWeight, minQuality, maxQuality, basePrice, baseTier);
         
         // Generate random weight with boost applied
         double weightRange = Math.min(this.maxWeight, maxWeight) - minWeight;
@@ -130,20 +153,14 @@ public class CustomFish {
             
             // Add tier boost with diminishing returns
             if (tierBoost > 0) {
-                tierIndex += 1;
-                
-                if (tierBoost > 1) {
-                    tierIndex += (int)(0.75);
-                }
-                
-                if (tierBoost > 2) {
-                    tierIndex += (int)(0.5);
-                }
+                tierIndex += 1 + (int) ((tierBoost - 1) * 0.5);
             }
             
-            // Chance for legendary
+            // Chance for mythic or legendary
             if (random.nextInt(100) < (1.5 * tierBoost) && tierBoost > 0) {
-                if (tierIndex >= FishTier.RARE.ordinal()) {
+                if (tierIndex >= FishTier.EPIC.ordinal()) {
+                    return FishTier.MYTHIC;
+                } else if (tierIndex >= FishTier.RARE.ordinal()) {
                     return FishTier.LEGENDARY;
                 }
             }
@@ -166,6 +183,10 @@ public class CustomFish {
     
     // Get the actual price based on weight, quality, and tier
     public double getPrice() {
+        if (id != null && id.startsWith("event_")) {
+            return getEventFishPrice();
+        }
+
         // 1. Nilai dasar berdasarkan kualitas dan tier
         double qualityFactor = quality / ((double)(minQuality + maxQuality) / 2);
         double tierFactor = actualTier.getPriceMultiplier();
@@ -205,11 +226,46 @@ public class CustomFish {
         // (Diterapkan di EconomyManager melalui dynamic pricing)
         
         // 7. Pastikan ikan langka tetap berharga
-        if (actualTier == FishTier.LEGENDARY || actualTier == FishTier.EPIC) {
+        if (actualTier == FishTier.MYTHIC) {
+            finalPrice = Math.max(finalPrice, basePrice * 3);
+        } else if (actualTier == FishTier.LEGENDARY || actualTier == FishTier.EPIC) {
             finalPrice = Math.max(finalPrice, basePrice * 2);
         }
         
         return finalPrice;
+    }
+    
+    /**
+     * Balanced price formula for event fish with logarithmic scaling and price caps
+     */
+    private double getEventFishPrice() {
+        double baseValue = basePrice;
+        double qualityFactor = 0.5 + (Math.sqrt(quality) / 10.0);
+        double weightFactor;
+        if (weight < 100.0) {
+            weightFactor = 0.8 + (Math.log10(1 + weight) / 5.0);
+        } else if (weight < 1000.0) {
+            weightFactor = 1.0 + (Math.log10(weight / 100.0) / 3.0);
+        } else {
+            weightFactor = 1.2 + (Math.log10(weight / 1000.0) / 5.0);
+        }
+        double tierMultiplier;
+        switch (getActualTier()) {
+            case MYTHIC: tierMultiplier = 2.0; break;
+            case LEGENDARY: tierMultiplier = 1.5; break;
+            case EPIC: tierMultiplier = 1.3; break;
+            case RARE: tierMultiplier = 1.1; break;
+            default: tierMultiplier = 1.0;
+        }
+        double rawPrice = baseValue * qualityFactor * weightFactor * tierMultiplier;
+        double priceCap = 1000000.0;
+        if (rawPrice > priceCap) {
+            double excess = rawPrice - priceCap;
+            double cappedExcess = Math.sqrt(excess) * 1000;
+            rawPrice = priceCap + cappedExcess;
+            rawPrice = Math.min(rawPrice, 2000000.0);
+        }
+        return rawPrice;
     }
     
     // Tambahkan method baru untuk format berat:
@@ -225,24 +281,40 @@ public class CustomFish {
 
     // Create an item stack for this fish with tier coloring
     public ItemStack createItemStack() {
-        ItemStack fishItem = new ItemBuilder(material)
-                .name(actualTier.getColor() + name + " " + actualTier.getDisplayName())
-                .lore("§7Berat: §f" + getFormattedWeight()) // Gunakan formatting berat baru
-                .lore("§7Kualitas: §f" + quality + "/100")
-                .lore("§7Tier: " + actualTier.getColor() + actualTier.getDisplayName())
-                .lore("§7Nilai: §f" + String.format("%.2f", getPrice()))
-                .lore("")
-                .lore("§8" + description)
-                .customModelData(customModelData)
-                .build();
+        ItemStack fishItem;
+        if (NusaFishing.getInstance() != null && NusaFishing.getInstance().getItemProviderManager() != null) {
+            fishItem = NusaFishing.getInstance().getItemProviderManager()
+                    .resolveBaseItem(textureProvider, textureId, material, customModelData);
+        } else {
+            fishItem = new ItemStack(material != null ? material : Material.COD);
+            ItemMeta meta = fishItem.getItemMeta();
+            if (meta != null && customModelData > 0) {
+                CustomModelDataHelper.applyCustomModelData(meta, customModelData);
+                fishItem.setItemMeta(meta);
+            }
+        }
+
+        ItemMeta meta = fishItem.getItemMeta();
+        if (meta == null) {
+            meta = org.bukkit.Bukkit.getItemFactory().getItemMeta(fishItem.getType());
+        }
+
+        meta.setDisplayName(actualTier.getColor() + name + " " + actualTier.getDisplayName());
+        List<String> lore = new java.util.ArrayList<>();
+        lore.add("§7Berat: §f" + getFormattedWeight());
+        lore.add("§7Kualitas: §f" + quality + "/100");
+        lore.add("§7Tier: " + actualTier.getColor() + actualTier.getDisplayName());
+        lore.add("§7Nilai: §f" + String.format("%.2f", getPrice()));
+        lore.add("");
+        lore.add("§8" + description);
+        meta.setLore(lore);
                 
         // Simpan data ikan
-        ItemMeta meta = fishItem.getItemMeta();
         PersistentDataContainer container = meta.getPersistentDataContainer();
-        container.set(new NamespacedKey(NusaFishing.getInstance(), "fish_id"), PersistentDataType.STRING, id);
-        container.set(new NamespacedKey(NusaFishing.getInstance(), "fish_weight"), PersistentDataType.DOUBLE, weight);
-        container.set(new NamespacedKey(NusaFishing.getInstance(), "fish_quality"), PersistentDataType.INTEGER, quality);
-        container.set(new NamespacedKey(NusaFishing.getInstance(), "fish_tier"), PersistentDataType.INTEGER, actualTier.ordinal());
+        container.set(NamespacedKey.fromString("nusafishing:fish_id"), PersistentDataType.STRING, id);
+        container.set(NamespacedKey.fromString("nusafishing:fish_weight"), PersistentDataType.DOUBLE, weight);
+        container.set(NamespacedKey.fromString("nusafishing:fish_quality"), PersistentDataType.INTEGER, quality);
+        container.set(NamespacedKey.fromString("nusafishing:fish_tier"), PersistentDataType.INTEGER, actualTier.ordinal());
         fishItem.setItemMeta(meta);
         
         return fishItem;
@@ -254,6 +326,8 @@ public class CustomFish {
     public String getDescription() { return description; }
     public Material getMaterial() { return material; }
     public int getCustomModelData() { return customModelData; }
+    public String getTextureProvider() { return textureProvider; }
+    public String getTextureId() { return textureId; }
     public double getMinWeight() { return minWeight; }
     public double getMaxWeight() { return maxWeight; }
     public int getMinQuality() { return minQuality; }
@@ -265,5 +339,14 @@ public class CustomFish {
     public FishTier getActualTier() {
         // Never return null - fall back to base tier if actual tier is null
         return actualTier != null ? actualTier : baseTier;
+    }
+
+    /**
+     * Set caught fish properties safely without requiring reflection.
+     */
+    public void applyCaughtData(double weight, int quality, FishTier actualTier) {
+        this.weight = weight;
+        this.quality = quality;
+        this.actualTier = actualTier != null ? actualTier : this.baseTier;
     }
 }

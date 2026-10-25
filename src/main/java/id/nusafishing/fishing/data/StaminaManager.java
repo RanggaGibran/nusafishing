@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
@@ -17,7 +18,7 @@ import id.nusafishing.fishing.model.CustomFish;
 public class StaminaManager {
     private final NusaFishing plugin;
     private final Map<UUID, Double> playerStamina;
-    private final Map<UUID, BukkitTask> regenerationTasks;
+    private BukkitTask globalRegenTask;
     
     private static final double MAX_STAMINA = 100.0;
     private static final double REGEN_AMOUNT = 1.0;
@@ -26,22 +27,23 @@ public class StaminaManager {
     public StaminaManager(NusaFishing plugin) {
         this.plugin = plugin;
         this.playerStamina = new HashMap<>();
-        this.regenerationTasks = new HashMap<>();
+        startGlobalRegeneration();
     }
     
     public void initializePlayer(Player player) {
         UUID playerId = player.getUniqueId();
-        playerStamina.put(playerId, MAX_STAMINA);
-        startRegeneration(player);
+        // Preserve stamina across reconnects, default to MAX_STAMINA for new players
+        playerStamina.putIfAbsent(playerId, MAX_STAMINA);
     }
     
     public void removePlayer(Player player) {
-        UUID playerId = player.getUniqueId();
-        playerStamina.remove(playerId);
-        
-        BukkitTask task = regenerationTasks.remove(playerId);
-        if (task != null) {
-            task.cancel();
+        // Keep stamina in playerStamina cache so reconnecting does not exploit free 100% stamina
+    }
+    
+    public void shutdown() {
+        if (globalRegenTask != null) {
+            globalRegenTask.cancel();
+            globalRegenTask = null;
         }
     }
     
@@ -91,32 +93,29 @@ public class StaminaManager {
         player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(message));
     }
     
-    private void startRegeneration(Player player) {
-        UUID playerId = player.getUniqueId();
-        
-        // Cancel any existing task
-        BukkitTask existingTask = regenerationTasks.get(playerId);
-        if (existingTask != null) {
-            existingTask.cancel();
+    private void startGlobalRegeneration() {
+        if (globalRegenTask != null) {
+            globalRegenTask.cancel();
         }
         
-        // Start new regeneration task
-        BukkitTask task = new BukkitRunnable() {
+        globalRegenTask = new BukkitRunnable() {
             @Override
             public void run() {
-                double stamina = playerStamina.getOrDefault(playerId, MAX_STAMINA);
-                if (stamina < MAX_STAMINA) {
-                    restoreStamina(player, REGEN_AMOUNT);
-                    
-                    // Show recovery message if stamina is still low
-                    if (stamina < 20) {
-                        sendActionBar(player, "§e§lStamina: §e" + String.format("%.1f", stamina + REGEN_AMOUNT) + "%");
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    UUID playerId = player.getUniqueId();
+                    double stamina = playerStamina.getOrDefault(playerId, MAX_STAMINA);
+                    if (stamina < MAX_STAMINA) {
+                        restoreStamina(player, REGEN_AMOUNT);
+                        double clampedStamina = Math.min(MAX_STAMINA, stamina + REGEN_AMOUNT);
+                        
+                        // Show recovery message if stamina is still low
+                        if (clampedStamina < 20) {
+                            sendActionBar(player, "§e§lStamina: §e" + String.format("%.1f", clampedStamina) + "%");
+                        }
                     }
                 }
             }
         }.runTaskTimer(plugin, REGEN_DELAY, REGEN_DELAY);
-        
-        regenerationTasks.put(playerId, task);
     }
     
     /**
@@ -141,22 +140,18 @@ public class StaminaManager {
             weightFactor = 25 + (fishWeight - 1000) / 1000; // 25+ stamina
         }
         
-        // Cap the stamina cost at 50 to avoid excessive penalties
+        // Cap the base stamina cost at 50 to avoid excessive penalties
         double staminaCost = Math.min(50, 10 + weightFactor);
         
-        // Apply rod stamina modifier
-        if (rod != null) {
-            staminaCost *= rod.getStaminaModifier();
-        }
-        
-        // Consume the stamina
+        // Consume stamina (consumeStamina applies rod's stamina modifier once)
         consumeStamina(player, staminaCost, rod);
         
         // Notify player if significant stamina loss
-        if (staminaCost > 20) {
+        double actualCost = (rod != null) ? (staminaCost * rod.getStaminaModifier()) : staminaCost;
+        if (actualCost > 20) {
             player.sendMessage("§e§lMelelahkan! §fMenangkap ikan seberat §e" + 
                 fish.getFormattedWeight() + " §fmenguras §e" + 
-                String.format("%.1f", staminaCost) + " §fstamina.");
+                String.format("%.1f", actualCost) + " §fstamina.");
         }
     }
 }

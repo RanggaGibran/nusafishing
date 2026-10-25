@@ -16,6 +16,10 @@ import net.md_5.bungee.api.chat.TextComponent;
 import id.nusafishing.NusaFishing;
 import id.nusafishing.fishing.FishingListener;
 import id.nusafishing.fishing.model.CustomFish;
+import id.nusafishing.fishing.model.FishingRod;
+import org.bukkit.NamespacedKey;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
 
 public class StrikeMinigame {
     private final NusaFishing plugin;
@@ -181,12 +185,23 @@ public class StrikeMinigame {
         
         if (success && fish != null) {
             // Award the fish to player
-            player.getInventory().addItem(fish.createItemStack());
+            Map<Integer, ItemStack> leftover = player.getInventory().addItem(fish.createItemStack());
+            if (!leftover.isEmpty()) {
+                for (ItemStack drop : leftover.values()) {
+                    player.getWorld().dropItemNaturally(player.getLocation(), drop);
+                }
+                player.sendMessage("§e§lPerhatian! §fInventory kamu penuh, ikan dijatuhkan ke tanah.");
+            }
             player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
             
             // Record the catch in statistics
             plugin.getStatisticsManager().recordFishCaught(player.getUniqueId(), fish);
             
+            // Check for event fish catch
+            if (fish.getId().startsWith("event_")) {
+                plugin.getEventManager().handleEventFishCaught(player, fish);
+            }
+
             // Record untuk turnamen juga jika sedang berlangsung
             if (plugin.getTournamentManager().isTournamentActive()) {
                 plugin.getTournamentManager().recordCatch(player, fish);
@@ -204,9 +219,29 @@ public class StrikeMinigame {
             plugin.getSkillManager().addFishingExp(player, xpGain);
             
             // Reduce durability on successful catch
-            if (fishingRod != null && durabilityLoss != null) {
-                FishingListener.reduceDurability(player, fishingRod, durabilityLoss);
+            FishingRod customRod = null;
+            if (fishingRod != null) {
+                ItemMeta meta = fishingRod.getItemMeta();
+                if (meta != null) {
+                    NamespacedKey cleanRodKey = NamespacedKey.fromString("nusafishing:rod_id");
+                    NamespacedKey dottedRodKey = NamespacedKey.fromString("nusafishing:nusafishing.rod_id");
+                    String rodId = null;
+                    if (cleanRodKey != null && meta.getPersistentDataContainer().has(cleanRodKey, PersistentDataType.STRING)) {
+                        rodId = meta.getPersistentDataContainer().get(cleanRodKey, PersistentDataType.STRING);
+                    } else if (dottedRodKey != null && meta.getPersistentDataContainer().has(dottedRodKey, PersistentDataType.STRING)) {
+                        rodId = meta.getPersistentDataContainer().get(dottedRodKey, PersistentDataType.STRING);
+                    }
+                    if (rodId != null) {
+                        customRod = plugin.getFishingManager().getRodById(rodId);
+                    }
+                }
+                if (durabilityLoss != null) {
+                    FishingListener.reduceDurability(player, fishingRod, durabilityLoss);
+                }
             }
+
+            // Consume stamina based on fish weight
+            plugin.getStaminaManager().consumeStaminaForFish(player, fish, customRod);
         } else {
             // Fish got away
             player.playSound(player.getLocation(), Sound.ENTITY_ITEM_BREAK, 1.0f, 1.0f);
@@ -224,6 +259,15 @@ public class StrikeMinigame {
      * @param player The player to remove hooks from
      */
     private void removePlayerFishingHook(Player player) {
+        if (player == null) return;
+        try {
+            org.bukkit.entity.FishHook hook = player.getFishHook();
+            if (hook != null && hook.isValid()) {
+                hook.remove();
+                return;
+            }
+        } catch (Throwable ignored) {
+        }
         // Check all entities in the world for fishing hooks belonging to this player
         player.getWorld().getEntitiesByClass(org.bukkit.entity.FishHook.class).stream()
             .filter(hook -> hook.getShooter() instanceof Player)

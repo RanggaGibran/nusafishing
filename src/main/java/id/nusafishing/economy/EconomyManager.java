@@ -155,6 +155,9 @@ public class EconomyManager {
         
         // Higher tier fish lose value faster when market gets saturated
         switch (fish.getBaseTier()) {
+            case MYTHIC:
+                reduction = 0.04 * amount; // 4% per fish
+                break;
             case LEGENDARY:
                 reduction = 0.03 * amount; // 3% per fish
                 break;
@@ -202,6 +205,9 @@ public class EconomyManager {
                 if (fish != null) {
                     // Recovery rate based on tier
                     switch (fish.getBaseTier()) {
+                        case MYTHIC:
+                            recoveryRate = 0.005; // 0.5% recovery per cycle
+                            break;
                         case LEGENDARY:
                             recoveryRate = 0.01; // 1% recovery per cycle
                             break;

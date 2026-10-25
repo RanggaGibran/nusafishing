@@ -202,9 +202,11 @@ public class TournamentManager {
             if (!tournament.isAutoStart()) continue;
             
             // Cek jadwal
+            boolean dayMatches = tournament.getDaysOfWeek() != null && 
+                    tournament.getDaysOfWeek().stream().anyMatch(d -> d.equalsIgnoreCase(currentDayOfWeek));
             if (tournament.getHourOfDay() == currentHour && 
                 tournament.getMinuteOfHour() == currentMinute &&
-                tournament.getDaysOfWeek().contains(currentDayOfWeek)) {
+                dayMatches) {
                 
                 // Mulai turnamen
                 startTournament(tournament);
@@ -229,7 +231,7 @@ public class TournamentManager {
         
         // Set waktu mulai dan selesai
         activeTournament.setStartTime(System.currentTimeMillis());
-        long endTime = activeTournament.getStartTime() + (activeTournament.getDurationMinutes() * 60 * 1000);
+        long endTime = activeTournament.getStartTime() + ((long) activeTournament.getDurationMinutes() * 60L * 1000L);
         activeTournament.setEndTime(endTime);
         
         // Umumkan turnamen dimulai
@@ -241,7 +243,7 @@ public class TournamentManager {
             public void run() {
                 broadcastLeaderboard(false);
             }
-        }.runTaskTimer(plugin, 20 * 60 * 2, 20 * 60 * 2);
+        }.runTaskTimer(plugin, 20L * 60L * 2L, 20L * 60L * 2L);
         
         // Jadwalkan task untuk mengakhiri turnamen
         endTask = new BukkitRunnable() {
@@ -249,7 +251,7 @@ public class TournamentManager {
             public void run() {
                 endTournament();
             }
-        }.runTaskLater(plugin, 20 * 60 * activeTournament.getDurationMinutes());
+        }.runTaskLater(plugin, 20L * 60L * (long) activeTournament.getDurationMinutes());
         
         return true;
     }
@@ -442,11 +444,11 @@ public class TournamentManager {
             // Tambahkan uang
             if (money > 0 && plugin.getEconomyManager().isEconomyEnabled()) {
                 plugin.getEconomyManager().depositMoney(Bukkit.getOfflinePlayer(entry.getPlayerId()), money);
-                
-                // Tambahkan ke ringkasan hadiah
-                rewardSummary.append("§6" + position + ". §f" + entry.getPlayerName() + 
-                        " §7- §a" + plugin.getEconomyManager().formatMoney(money) + "\n");
             }
+
+            // Tambahkan ke ringkasan hadiah
+            rewardSummary.append("§6" + position + ". §f" + entry.getPlayerName() + 
+                    (money > 0 ? " §7- §a" + plugin.getEconomyManager().formatMoney(money) : "") + "\n");
             
             // Tambahkan exp (hanya jika online)
             if (exp > 0 && player != null) {

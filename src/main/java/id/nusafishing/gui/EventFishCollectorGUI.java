@@ -25,6 +25,7 @@ import id.nusafishing.economy.EconomyManager;
 import id.nusafishing.fishing.model.CustomFish;
 import id.nusafishing.util.ItemBuilder;
 import id.nusafishing.event.EventFish;
+import id.nusafishing.event.ConfigEventFish;
 import id.nusafishing.fishing.model.FishingBait;
 
 public class EventFishCollectorGUI extends GUI {
@@ -227,7 +228,8 @@ public class EventFishCollectorGUI extends GUI {
                         .build();
                 
                 // Set the item in the GUI with a click handler
-                setItem(slot, displayItem, () -> sellEventFish(invSlot, fishItem, fish, premiumPrice));
+                final int currentGuiSlot = slot;
+                setItem(slot, displayItem, () -> sellEventFish(currentGuiSlot, invSlot, fishItem, fish, premiumPrice));
                 
                 // Move to next slot
                 slot++;
@@ -246,14 +248,18 @@ public class EventFishCollectorGUI extends GUI {
         if (item == null) return false;
         
         ItemMeta meta = item.getItemMeta();
-        if (meta == null || !meta.hasCustomModelData()) return false;
+        if (meta == null) return false;
         
         PersistentDataContainer container = meta.getPersistentDataContainer();
-        NamespacedKey fishIdKey = new NamespacedKey(plugin, "fish_id");
+        NamespacedKey cleanFishIdKey = NamespacedKey.fromString("nusafishing:fish_id");
+        NamespacedKey legacyFishIdKey = new NamespacedKey(plugin, "fish_id");
         
-        if (!container.has(fishIdKey, PersistentDataType.STRING)) return false;
-        
-        String fishId = container.get(fishIdKey, PersistentDataType.STRING);
+        String fishId = null;
+        if (cleanFishIdKey != null && container.has(cleanFishIdKey, PersistentDataType.STRING)) {
+            fishId = container.get(cleanFishIdKey, PersistentDataType.STRING);
+        } else if (container.has(legacyFishIdKey, PersistentDataType.STRING)) {
+            fishId = container.get(legacyFishIdKey, PersistentDataType.STRING);
+        }
         return fishId != null && fishId.startsWith("event_");
     }
     
@@ -266,39 +272,63 @@ public class EventFishCollectorGUI extends GUI {
         if (item == null) return null;
         
         ItemMeta meta = item.getItemMeta();
-        if (meta == null || !meta.hasCustomModelData()) return null;
+        if (meta == null) return null;
         
         PersistentDataContainer container = meta.getPersistentDataContainer();
-        NamespacedKey fishIdKey = new NamespacedKey(plugin, "fish_id");
-        NamespacedKey weightKey = new NamespacedKey(plugin, "fish_weight");
-        NamespacedKey qualityKey = new NamespacedKey(plugin, "fish_quality");
+        NamespacedKey cleanFishIdKey = NamespacedKey.fromString("nusafishing:fish_id");
+        NamespacedKey legacyFishIdKey = new NamespacedKey(plugin, "fish_id");
         
-        if (!container.has(fishIdKey, PersistentDataType.STRING)) return null;
+        String fishId = null;
+        if (cleanFishIdKey != null && container.has(cleanFishIdKey, PersistentDataType.STRING)) {
+            fishId = container.get(cleanFishIdKey, PersistentDataType.STRING);
+        } else if (container.has(legacyFishIdKey, PersistentDataType.STRING)) {
+            fishId = container.get(legacyFishIdKey, PersistentDataType.STRING);
+        }
         
-        String fishId = container.get(fishIdKey, PersistentDataType.STRING);
+        if (fishId == null) return null;
+
+        NamespacedKey cleanWeightKey = NamespacedKey.fromString("nusafishing:fish_weight");
+        NamespacedKey legacyWeightKey = new NamespacedKey(plugin, "fish_weight");
+        NamespacedKey cleanQualityKey = NamespacedKey.fromString("nusafishing:fish_quality");
+        NamespacedKey legacyQualityKey = new NamespacedKey(plugin, "fish_quality");
+        NamespacedKey cleanTierKey = NamespacedKey.fromString("nusafishing:fish_tier");
+        NamespacedKey legacyTierKey = new NamespacedKey(plugin, "fish_tier");
+
+        CustomFish templateFish = null;
         
-        // For event fish, we need special handling
-        if (fishId.startsWith("event_")) {
-            // Try to find the fish type in our EventFish enum
+        // 1. Check ConfigEventFish (from config.yml)
+        ConfigEventFish configEventFish = ConfigEventFish.getEventFish(fishId);
+        if (configEventFish != null) {
+            templateFish = configEventFish.createTemplateFish();
+        }
+
+        // 2. Check EventFish enum constants
+        if (templateFish == null && fishId.startsWith("event_")) {
+            String enumName = fishId.substring(6);
             for (EventFish eventFish : EventFish.values()) {
-                if (eventFish.name().equalsIgnoreCase(fishId.substring(6))) {
-                    // Create a CustomFish from the event fish
-                    return eventFish.createCustomFish();
+                if (eventFish.name().equalsIgnoreCase(enumName)) {
+                    templateFish = eventFish.createCustomFish();
+                    break;
                 }
             }
         }
-        
-        // For regular fish
-        CustomFish templateFish = plugin.getConfigManager().getCustomFishes().get(fishId);
+
+        // 3. Fallback to regular CustomFishes from configManager
+        if (templateFish == null) {
+            templateFish = plugin.getConfigManager().getCustomFishes().get(fishId);
+        }
+
         if (templateFish == null) return null;
-        
-        // Create a new instance
+
+        // Create new instance from template
         CustomFish fish = new CustomFish(
             templateFish.getId(), 
             templateFish.getName(), 
             templateFish.getDescription(),
             templateFish.getMaterial(),
             templateFish.getCustomModelData(),
+            templateFish.getTextureProvider(),
+            templateFish.getTextureId(),
             templateFish.getMinWeight(),
             templateFish.getMaxWeight(),
             templateFish.getMinQuality(),
@@ -306,23 +336,62 @@ public class EventFishCollectorGUI extends GUI {
             templateFish.getBasePrice(),
             templateFish.getBaseTier()
         );
-        
+
+        // Extract caught stats from ItemStack PersistentDataContainer
+        double weight = templateFish.getMinWeight();
+        if (cleanWeightKey != null && container.has(cleanWeightKey, PersistentDataType.DOUBLE)) {
+            weight = container.get(cleanWeightKey, PersistentDataType.DOUBLE);
+        } else if (container.has(legacyWeightKey, PersistentDataType.DOUBLE)) {
+            weight = container.get(legacyWeightKey, PersistentDataType.DOUBLE);
+        }
+
+        int quality = templateFish.getMinQuality();
+        if (cleanQualityKey != null && container.has(cleanQualityKey, PersistentDataType.INTEGER)) {
+            quality = container.get(cleanQualityKey, PersistentDataType.INTEGER);
+        } else if (container.has(legacyQualityKey, PersistentDataType.INTEGER)) {
+            quality = container.get(legacyQualityKey, PersistentDataType.INTEGER);
+        }
+
+        int tierOrdinal = templateFish.getBaseTier().ordinal();
+        if (cleanTierKey != null && container.has(cleanTierKey, PersistentDataType.INTEGER)) {
+            tierOrdinal = container.get(cleanTierKey, PersistentDataType.INTEGER);
+        } else if (container.has(legacyTierKey, PersistentDataType.INTEGER)) {
+            tierOrdinal = container.get(legacyTierKey, PersistentDataType.INTEGER);
+        }
+        if (tierOrdinal < 0 || tierOrdinal >= CustomFish.FishTier.values().length) {
+            tierOrdinal = templateFish.getBaseTier().ordinal();
+        }
+        CustomFish.FishTier actualTier = CustomFish.FishTier.values()[tierOrdinal];
+
+        fish.applyCaughtData(weight, quality, actualTier);
         return fish;
     }
     
     /**
      * Sell a specific event fish
+     * @param guiSlot The slot in the GUI
      * @param inventorySlot The inventory slot of the fish
      * @param fishItem The ItemStack of the fish
      * @param fish The CustomFish data
      * @param unitPrice The price per fish
      */
-    private void sellEventFish(int inventorySlot, ItemStack fishItem, CustomFish fish, double unitPrice) {
-        int amount = fishItem.getAmount();
+    private void sellEventFish(int guiSlot, int inventorySlot, ItemStack fishItem, CustomFish fish, double unitPrice) {
+        // Immediately remove click handler and clear GUI slot to prevent double-click dupe
+        clickHandlers.remove(guiSlot);
+        inventory.setItem(guiSlot, null);
+
+        // Verify the item is still actually in the player's inventory slot
+        ItemStack currentItem = player.getInventory().getItem(inventorySlot);
+        if (currentItem == null || !isEventFish(currentItem)) {
+            player.sendMessage("§cIkan tidak ditemukan di inventory!");
+            setupGui();
+            return;
+        }
+
+        int amount = currentItem.getAmount();
         double totalPrice = unitPrice * amount;
         
         // Remove the fish from the player's inventory
-        ItemStack itemToRemove = fishItem.clone();
         player.getInventory().setItem(inventorySlot, null);
         
         // Play collection animation
@@ -343,19 +412,17 @@ public class EventFishCollectorGUI extends GUI {
             giveRandomBonus();
         }
         
-        // Refresh the GUI
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                setupGui(); // Refresh the entire GUI
-            }
-        }.runTaskLater(plugin, 20L);
+        // Refresh the GUI immediately
+        setupGui();
     }
     
     /**
      * Sell all event fish in the player's inventory
      */
     private void sellAllEventFish() {
+        // Prevent spam clicking the sell-all button
+        clickHandlers.remove(49);
+
         // Get all event fish from inventory
         List<Integer> eventFishSlots = new ArrayList<>();
         Map<String, Integer> fishCounts = new HashMap<>();
@@ -428,13 +495,8 @@ public class EventFishCollectorGUI extends GUI {
         // Always give a bonus when selling all
         giveRandomBonus();
         
-        // Refresh the GUI
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                setupGui(); // Refresh the entire GUI
-            }
-        }.runTaskLater(plugin, 30L); // Slightly longer delay for the animation
+        // Refresh the GUI immediately
+        setupGui();
     }
     
     /**
@@ -476,7 +538,9 @@ public class EventFishCollectorGUI extends GUI {
                 player.spawnParticle(Particle.END_ROD, player.getLocation().add(x, 1, z), 5, 0.1, 0.1, 0.1, 0.05);
                 
                 if (ticks % 5 == 0) {
-                    player.spawnParticle(Particle.TOTEM, player.getLocation().add(0, 1, 0), 20, 0.5, 0.5, 0.5, 0.1);
+                    if (id.nusafishing.compat.CompatibilityHelper.TOTEM != null) {
+                        player.spawnParticle(id.nusafishing.compat.CompatibilityHelper.TOTEM, player.getLocation().add(0, 1, 0), 20, 0.5, 0.5, 0.5, 0.1);
+                    }
                 }
                 
                 ticks++;
@@ -602,6 +666,8 @@ public class EventFishCollectorGUI extends GUI {
         
         // Play bonus effect
         player.playSound(player.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, 1.0f, 1.0f);
-        player.spawnParticle(Particle.SPELL_WITCH, player.getLocation().add(0, 1, 0), 50, 0.5, 0.5, 0.5, 0.1);
+        if (id.nusafishing.compat.CompatibilityHelper.WITCH != null) {
+            player.spawnParticle(id.nusafishing.compat.CompatibilityHelper.WITCH, player.getLocation().add(0, 1, 0), 50, 0.5, 0.5, 0.5, 0.1);
+        }
     }
 }

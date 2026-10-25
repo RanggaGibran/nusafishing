@@ -2,10 +2,12 @@ package id.nusafishing.config;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -24,14 +26,19 @@ public class ConfigManager {
     private Map<String, FishingRod> fishingRods;
     private Map<String, FishingBait> fishingBaits;
     private Map<String, CustomFish> customFishes;
+    private Map<CustomFish.FishTier, String> fishTierColors;
+    private Map<FishingRod.RodTier, String> rodTierColors;
     
     public ConfigManager(NusaFishing plugin) {
         this.plugin = plugin;
         this.fishingRods = new HashMap<>();
         this.fishingBaits = new HashMap<>();
         this.customFishes = new HashMap<>();
+        this.fishTierColors = new EnumMap<>(CustomFish.FishTier.class);
+        this.rodTierColors = new EnumMap<>(FishingRod.RodTier.class);
         
         // Initialize configs
+        loadTierColors();
         createFishingConfig();
         loadFishingConfig();
     }
@@ -69,6 +76,14 @@ public class ConfigManager {
                 boolean hasSpecialAbility = rodsSection.getBoolean(key + ".special_ability", false);
                 String abilityDescription = rodsSection.getString(key + ".ability_description", "");
                 
+                String materialName = rodsSection.getString(key + ".material", "FISHING_ROD");
+                Material material = Material.getMaterial(materialName != null ? materialName.toUpperCase() : "FISHING_ROD");
+                if (material == null) {
+                    material = Material.FISHING_ROD;
+                }
+                String textureProvider = rodsSection.getString(key + ".texture_provider", "vanilla");
+                String textureId = rodsSection.getString(key + ".texture_id", null);
+
                 // Baca price dan lure_level
                 double price = rodsSection.getDouble(key + ".price", -1); // Default -1 berarti gunakan kalkulasi
                 int lureLevel = rodsSection.getInt(key + ".lure_level", tier.ordinal() + 1); // Default berdasarkan tier
@@ -81,10 +96,12 @@ public class ConfigManager {
                             case ADVANCED -> 500.0;
                             case EXPERT -> 2500.0;
                             case MASTER -> 10000.0;
+                            case MYTHIC -> 50000.0;
                             default -> 25.0;
                         });
                 
-                FishingRod rod = new FishingRod(key, name, description, customModelData, 
+                FishingRod rod = new FishingRod(key, name, description, material, customModelData, 
+                                              textureProvider, textureId,
                                               durability, staminaModifier, tier,
                                               hasSpecialAbility, abilityDescription,
                                               price, lureLevel, maxWeightCapacity);
@@ -125,8 +142,14 @@ public class ConfigManager {
             for (String key : fishesSection.getKeys(false)) {
                 String name = fishesSection.getString(key + ".name", key);
                 String description = fishesSection.getString(key + ".description", "");
-                Material material = Material.getMaterial(fishesSection.getString(key + ".material", "COD"));
+                String materialName = fishesSection.getString(key + ".material", "COD");
+                Material material = Material.getMaterial(materialName != null ? materialName.toUpperCase() : "COD");
+                if (material == null) {
+                    material = Material.COD;
+                }
                 int customModelData = fishesSection.getInt(key + ".custom_model_data", 0);
+                String textureProvider = fishesSection.getString(key + ".texture_provider", "vanilla");
+                String textureId = fishesSection.getString(key + ".texture_id", null);
                 double minWeight = fishesSection.getDouble(key + ".min_weight", 0.1);
                 double maxWeight = fishesSection.getDouble(key + ".max_weight", 1.0);
                 int minQuality = fishesSection.getInt(key + ".min_quality", 1);
@@ -143,6 +166,7 @@ public class ConfigManager {
                 }
                 
                 CustomFish fish = new CustomFish(key, name, description, material, customModelData,
+                                                textureProvider, textureId,
                                                 minWeight, maxWeight, minQuality, maxQuality, 
                                                 basePrice, tier);
                 customFishes.put(key, fish);
@@ -161,6 +185,7 @@ public class ConfigManager {
     public void reloadConfigs() {
         // Reload plugin config
         plugin.reloadConfig();
+        loadTierColors();
         
         // Reload fishing config
         reloadFishingConfig();
@@ -170,6 +195,56 @@ public class ConfigManager {
         
         // Log message
         plugin.getLogger().info("Semua konfigurasi berhasil dimuat ulang!");
+    }
+
+    public void loadTierColors() {
+        fishTierColors.clear();
+        rodTierColors.clear();
+
+        FileConfiguration config = plugin.getConfig();
+        ConfigurationSection tierColorsSection = config != null ? config.getConfigurationSection("tier_colors") : null;
+
+        ConfigurationSection fishColors = tierColorsSection != null ? tierColorsSection.getConfigurationSection("fish") : null;
+        for (CustomFish.FishTier tier : CustomFish.FishTier.values()) {
+            String colorCode = null;
+            if (fishColors != null) {
+                colorCode = fishColors.getString(tier.name());
+            }
+            if (colorCode == null && tierColorsSection != null) {
+                colorCode = tierColorsSection.getString(tier.name());
+            }
+            if (colorCode != null && !colorCode.isEmpty()) {
+                fishTierColors.put(tier, ChatColor.translateAlternateColorCodes('&', colorCode));
+            } else {
+                fishTierColors.put(tier, tier.getDefaultColor());
+            }
+        }
+
+        ConfigurationSection rodColors = tierColorsSection != null ? tierColorsSection.getConfigurationSection("rod") : null;
+        for (FishingRod.RodTier tier : FishingRod.RodTier.values()) {
+            String colorCode = null;
+            if (rodColors != null) {
+                colorCode = rodColors.getString(tier.name());
+            }
+            if (colorCode == null && tierColorsSection != null) {
+                colorCode = tierColorsSection.getString(tier.name());
+            }
+            if (colorCode != null && !colorCode.isEmpty()) {
+                rodTierColors.put(tier, ChatColor.translateAlternateColorCodes('&', colorCode));
+            } else {
+                rodTierColors.put(tier, tier.getDefaultColor());
+            }
+        }
+    }
+
+    public String getFishTierColor(CustomFish.FishTier tier) {
+        if (tier == null) return "§7";
+        return fishTierColors.getOrDefault(tier, tier.getDefaultColor());
+    }
+
+    public String getRodTierColor(FishingRod.RodTier tier) {
+        if (tier == null) return "§7";
+        return rodTierColors.getOrDefault(tier, tier.getDefaultColor());
     }
 
     public void reloadFishingConfig() {
