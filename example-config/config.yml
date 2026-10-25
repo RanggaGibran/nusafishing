@@ -1,0 +1,305 @@
+# ==============================================================================
+# NusaFishing - Stable Anti-Inflation Main Configuration (config.yml)
+# ==============================================================================
+# MATHEMATICAL ECONOMY & BALANCE OVERVIEW:
+# ------------------------------------------------------------------------------
+# In previous versions, uncalibrated base prices and compound multipliers caused
+# severe server economy hyperinflation:
+#   - Old Event Fish: Base price 150,000 - 200,000 compounded by weight (1.4x),
+#     quality (1.45x), tier (1.5x), and Collector GUI (1.5x), producing single-fish
+#     payouts exceeding 650,000 - 1,200,000 coins.
+#   - Old Equipment: Mythic Rod cost 750,000 coins with repair costs of 5.0/dur
+#     scaled by 8.0x (100,000 coins per repair), alienating legitimate players
+#     while hyper-inflating the richest ones.
+#
+# BALANCED ECONOMIC TARGETS (Per Active Fishing Hour):
+#   - Early Game (Basic Rod + Worms):        ~350 - 550 net coins/hour
+#   - Mid Game (Advanced Rod + Medium Bait): ~1,500 - 2,800 net coins/hour
+#   - Late Game (Expert/Master Rod):         ~4,000 - 6,500 net coins/hour
+#   - End Game (Mythic Rod + Rare Bait):     ~7,500 - 11,000 net coins/hour
+#   - Event Boss Catch (Prestigious Event):  ~6,000 - 15,000 coins (1.5x Collector)
+#
+# Sinks (Durability Repair + Bait Consumption) are calibrated to consume 20-30%
+# of gross catches, preventing long-term coin saturation.
+# ==============================================================================
+
+# Custom tier colors (Supports Minecraft legacy formatting codes: &0-&f, &l, etc.)
+tier_colors:
+  fish:
+    COMMON: "&7"
+    UNCOMMON: "&a"
+    RARE: "&9"
+    EPIC: "&5"
+    LEGENDARY: "&6"
+    MYTHIC: "&c"
+  rod:
+    BASIC: "&7"
+    INTERMEDIATE: "&a"
+    ADVANCED: "&9"
+    EXPERT: "&5"
+    MASTER: "&6"
+    MYTHIC: "&c"
+
+# ==============================================================================
+# Economy Settings & Sinks
+# ==============================================================================
+economy:
+  # Base repair cost per 1 point of lost durability:
+  # Final Repair Cost = DurabilityLost * repair_cost_per_durability * TierMultiplier
+  repair_cost_per_durability: 0.5
+
+  # Tier-based repair cost multipliers:
+  # - BASIC (75 dur full repair):        75 * 0.5 * 1.0 = 37.5 coins
+  # - INTERMEDIATE (175 dur full repair): 175 * 0.5 * 1.25 = ~109.4 coins
+  # - ADVANCED (400 dur full repair):     400 * 0.5 * 1.75 = 350.0 coins
+  # - EXPERT (750 dur full repair):       750 * 0.5 * 2.5 = 937.5 coins
+  # - MASTER (1,500 dur full repair):     1,500 * 0.5 * 3.5 = 2,625.0 coins
+  # - MYTHIC (3,000 dur full repair):     3,000 * 0.5 * 5.0 = 7,500.0 coins
+  repair_cost_multipliers:
+    BASIC: 1.0
+    INTERMEDIATE: 1.25
+    ADVANCED: 1.75
+    EXPERT: 2.5
+    MASTER: 3.5
+    MYTHIC: 5.0
+
+  # Global fish sell price multiplier (1.0 = 100% standard calibrated price)
+  fish_price_multiplier: 1.0
+
+  # Dynamic supply and demand market pricing:
+  # As players sell large quantities of a fish species, its local value drops temporarily,
+  # recovering back to 1.0 hourly. This discourages single-species AFK farming.
+  dynamic_pricing: true
+
+  # Random market fluctuation range (±0.2 = prices naturally vary between 0.8x and 1.2x)
+  price_fluctuation: 0.2
+
+# ==============================================================================
+# Player Stamina Settings
+# ==============================================================================
+player:
+  # Maximum player stamina capacity
+  max_stamina: 100.0
+
+  # Stamina regeneration per tick cycle
+  stamina_regen: 1.5
+
+  # Delay in ticks before regeneration commences after reeling
+  stamina_regen_delay: 20
+
+# ==============================================================================
+# Fishing World Events
+# ==============================================================================
+events:
+  # Minimum cooldown between world fishing events (minutes)
+  min_cooldown_minutes: 45
+
+  # Maximum cooldown between world fishing events (minutes)
+  max_cooldown_minutes: 120
+
+  # Active event duration (minutes)
+  duration_minutes: 25
+
+  # Chance per cooldown cycle for an event to trigger (percentage)
+  chance_percent: 15.0
+
+  # Valid biomes where event bosses can be encountered
+  valid_biomes:
+    - OCEAN
+    - DEEP_OCEAN
+    - WARM_OCEAN
+    - LUKEWARM_OCEAN
+    - COLD_OCEAN
+    - DEEP_LUKEWARM_OCEAN
+    - DEEP_COLD_OCEAN
+    - FROZEN_OCEAN
+    - DEEP_FROZEN_OCEAN
+    - RIVER
+    - FROZEN_RIVER
+    - BEACH
+    - SNOWY_BEACH
+
+# ==============================================================================
+# Event Fish (Boss Catches)
+# ------------------------------------------------------------------------------
+# Economic Calibration:
+#   Formula: FinalPrice = base_price * qualityFactor (~1.45) * weightFactor (~1.35) * tierMultiplier (1.5x)
+#   Collector GUI Bonus: FinalPrice * 1.5
+#   Old Base Price 150k-200k caused 900k-1.2m coin payouts.
+#   Calibrated Base Price 1,500 - 3,500 results in ~6,000 - 15,000 coins total reward.
+# ==============================================================================
+event_fish:
+  event_ancient_leviathan:
+    name: "Leviathan Kuno"
+    description: "Predator purba raksasa penguasa samudera terdalam"
+    material: PUFFERFISH
+    custom_model_data: 4001
+    min_weight: 5000.0
+    max_weight: 15000.0
+    min_quality: 90
+    max_quality: 100
+    base_price: 3500.0
+    tier: LEGENDARY
+    event_types: [LEVIATHAN_HUNT]
+
+  event_kraken_king:
+    name: "Raja Kraken"
+    description: "Penguasa lautan dalam dengan tentakel penghancur kapal"
+    material: PUFFERFISH
+    custom_model_data: 4002
+    min_weight: 4000.0
+    max_weight: 12000.0
+    min_quality: 85
+    max_quality: 100
+    base_price: 3000.0
+    tier: LEGENDARY
+    event_types: [LEVIATHAN_HUNT]
+
+  event_poseidon_wrath:
+    name: "Murka Poseidon"
+    description: "Utusan sakral dewa laut berdaya magis samudra"
+    material: PUFFERFISH
+    custom_model_data: 4003
+    min_weight: 2000.0
+    max_weight: 7000.0
+    min_quality: 90
+    max_quality: 100
+    base_price: 2500.0
+    tier: LEGENDARY
+    event_types: [ANCIENT_GUARDIAN]
+
+  event_atlantean_guardian:
+    name: "Penjaga Atlantis"
+    description: "Makhluk mistis penjaga peradaban kota yang tenggelam"
+    material: PUFFERFISH
+    custom_model_data: 4004
+    min_weight: 3000.0
+    max_weight: 9000.0
+    min_quality: 85
+    max_quality: 100
+    base_price: 2600.0
+    tier: LEGENDARY
+    event_types: [ANCIENT_GUARDIAN]
+
+  event_abyssal_nightmare:
+    name: "Mimpi Buruk Palung"
+    description: "Monster kegelapan abadi dari dasar palung tanpa cahaya"
+    material: PUFFERFISH
+    custom_model_data: 4005
+    min_weight: 1500.0
+    max_weight: 5000.0
+    min_quality: 85
+    max_quality: 100
+    base_price: 2200.0
+    tier: LEGENDARY
+    event_types: [ABYSSAL_HORROR]
+
+  event_deep_one:
+    name: "Penghuni Palung"
+    description: "Makhluk kuno pemburu dalam tekanan hidrostatik ekstrem"
+    material: PUFFERFISH
+    custom_model_data: 4006
+    min_weight: 2000.0
+    max_weight: 6000.0
+    min_quality: 80
+    max_quality: 100
+    base_price: 2400.0
+    tier: LEGENDARY
+    event_types: [ABYSSAL_HORROR]
+
+  event_river_colossus:
+    name: "Kolosal Sungai"
+    description: "Ikan raksasa air tawar legendaris penghuni muara purba"
+    material: PUFFERFISH
+    custom_model_data: 4007
+    min_weight: 800.0
+    max_weight: 3000.0
+    min_quality: 85
+    max_quality: 100
+    base_price: 1800.0
+    tier: LEGENDARY
+    event_types: [RIVER_TITAN]
+
+  event_freshwater_behemoth:
+    name: "Behemoth Air Tawar"
+    description: "Predator ganas pemangsa puncak ekosistem sungai"
+    material: PUFFERFISH
+    custom_model_data: 4008
+    min_weight: 1000.0
+    max_weight: 3500.0
+    min_quality: 85
+    max_quality: 100
+    base_price: 2000.0
+    tier: LEGENDARY
+    event_types: [RIVER_TITAN]
+
+# ==============================================================================
+# Fishing Tournaments
+# ------------------------------------------------------------------------------
+# Sustainable prize pools scaled to prevent coin inflation:
+# - Daily:  1st 3,500 coins | 2nd 1,500 coins | 3rd 750 coins
+# - Weekly: 1st 15,000 coins | 2nd 7,500 coins | 3rd 3,500 coins
+# ==============================================================================
+tournaments:
+  min_time_between_tournaments: 60
+  auto_schedule: true
+  scheduled:
+    daily_heaviest:
+      name: "Turnamen Ikan Terberat Harian"
+      description: "Tangkap ikan dengan bobot terberat untuk merebut piala juara!"
+      type: HEAVIEST_FISH
+      duration_minutes: 30
+      hour_of_day: 18
+      minute_of_hour: 0
+      days_of_week:
+        - MONDAY
+        - TUESDAY
+        - WEDNESDAY
+        - THURSDAY
+        - FRIDAY
+        - SATURDAY
+        - SUNDAY
+      auto_start: true
+      rewards:
+        first_place:
+          money: 3500
+          exp: 300
+          commands:
+            - "give %player% diamond 3"
+        second_place:
+          money: 1500
+          exp: 150
+          commands:
+            - "give %player% diamond 1"
+        third_place:
+          money: 750
+          exp: 75
+          commands: []
+
+    weekly_most_fish:
+      name: "Turnamen Nelayan Handal Mingguan"
+      description: "Tangkap ikan sebanyak mungkin selama 1 jam penuh!"
+      type: MOST_FISH
+      duration_minutes: 60
+      hour_of_day: 20
+      minute_of_hour: 0
+      days_of_week:
+        - SATURDAY
+      auto_start: true
+      rewards:
+        first_place:
+          money: 15000
+          exp: 1000
+          commands:
+            - "give %player% netherite_ingot 1"
+            - "give %player% diamond 10"
+        second_place:
+          money: 7500
+          exp: 500
+          commands:
+            - "give %player% diamond 5"
+        third_place:
+          money: 3500
+          exp: 250
+          commands:
+            - "give %player% diamond 2"

@@ -1,0 +1,662 @@
+# ==============================================================================
+# NusaFishing - Stable Anti-Inflation Fishing Configuration (fishing.yml)
+# ==============================================================================
+# MATHEMATICAL PRICING ENGINE EXPLANATION:
+# ------------------------------------------------------------------------------
+# The NusaFishing engine calculates the final sale price of each fish via:
+#
+#   1. Quality Factor = Quality / ((min_quality + max_quality) / 2)
+#      (Varies between ~0.80 and ~1.25)
+#
+#   2. Tier Multiplier:
+#      COMMON = 1.0x | UNCOMMON = 1.5x | RARE = 2.0x | EPIC = 3.0x |
+#      LEGENDARY = 5.0x | MYTHIC = 8.0x
+#
+#   3. Weight Diminishing Returns Factor:
+#      - Under 10 kg:  Weight / ((min_weight + min(10.0, max_weight)) / 2)  (Linear)
+#      - 10 to 100 kg: 1.0 + (log10(Weight / 10.0) * 2.0)                  (Logarithmic)
+#      - Over 100 kg:  3.0 + (sqrt(Weight / 100.0) * 0.5)                  (Square Root)
+#
+#   4. Maintenance Deductions:
+#      Deduction = min(Weight * 0.01, 10.0 coins)
+#
+#   5. Final Formula:
+#      FinalPrice = max(1.0, (base_price * QualityFactor * TierMultiplier * WeightFactor) - Deduction)
+#
+# WHY THIS MODEL PREVENTS ECONOMY COLLAPSE:
+# ------------------------------------------------------------------------------
+# In old configs, large fish base prices of 500 - 2,500 multiplied by square root
+# and tier multipliers yielded individual fish sales of 10,000 - 50,000 coins.
+# In this calibrated configuration:
+#   - COMMON base (2.0 - 5.0) yields 3.0 - 7.5 coins
+#   - UNCOMMON base (6.0 - 15.0) yields 10.0 - 25.0 coins
+#   - RARE base (20.0 - 45.0) yields 35.0 - 90.0 coins
+#   - EPIC base (50.0 - 100.0) yields 120.0 - 280.0 coins
+#   - LEGENDARY base (120.0 - 250.0) yields 350.0 - 850.0 coins
+#   - MYTHIC base (350.0 - 650.0) yields 1,200.0 - 2,800.0 coins
+#
+# Active catch rate is ~180-220 fish/hour. Equipment repair + bait cost naturally
+# tax 20-30% of turnover, maintaining a permanent equilibrium.
+# ==============================================================================
+
+# ==============================================================================
+# Fishing Rods Progression
+# ------------------------------------------------------------------------------
+# Item Provider & Custom Textures:
+#   To use custom textures from Nexo, Oraxen, or ItemsAdder, add:
+#     texture_provider: vanilla | nexo | oraxen | itemsadder
+#     texture_id: "<id_item>"
+#     material: FISHING_ROD
+#     custom_model_data: 1001
+# ==============================================================================
+fishing_rods:
+  basic_rod:
+    name: "&fPancingan Bambu"
+    description: "Pancingan sederhana dari bambu untuk pemula"
+    custom_model_data: 1001
+    durability: 75
+    stamina_modifier: 1.0
+    tier: BASIC
+    special_ability: false
+    price: 150
+    lure_level: 1
+    max_weight_capacity: 25.0
+
+  intermediate_rod:
+    name: "&aPancingan Fiber"
+    description: "Pancingan fleksibel dengan efisiensi stamina lebih baik"
+    custom_model_data: 1002
+    durability: 175
+    stamina_modifier: 0.8
+    tier: INTERMEDIATE
+    special_ability: false
+    price: 600
+    lure_level: 2
+    max_weight_capacity: 100.0
+
+  advanced_rod:
+    name: "&9Pancingan Karbon"
+    description: "Pancingan serat karbon tangguh berbobot ringan"
+    custom_model_data: 1003
+    durability: 400
+    stamina_modifier: 0.6
+    tier: ADVANCED
+    special_ability: true
+    ability_description: "10% kesempatan meningkatkan tier tangkapan"
+    price: 2500
+    lure_level: 3
+    max_weight_capacity: 500.0
+
+  expert_rod:
+    name: "&5Pancingan Tempaan Master"
+    description: "Pancingan hasil tempaan pandai besi laut terkemuka"
+    custom_model_data: 1004
+    durability: 750
+    stamina_modifier: 0.45
+    tier: EXPERT
+    special_ability: true
+    ability_description: "15% kesempatan double catch"
+    price: 9000
+    lure_level: 4
+    max_weight_capacity: 2500.0
+
+  legendary_rod:
+    name: "&6Pancingan Legenda Samudera"
+    description: "Pancingan bertuah yang mampu menahan tarikan predator raksasa"
+    custom_model_data: 1005
+    durability: 1500
+    stamina_modifier: 0.35
+    tier: MASTER
+    special_ability: true
+    ability_description: "8% kesempatan memancing ikan legendaris"
+    price: 30000
+    lure_level: 5
+    max_weight_capacity: 10000.0
+
+  mythic_rod:
+    name: "&cPancingan Trisula Purba"
+    description: "Pancingan sakti dialiri kekuatan abyssal samudra tak berdasar"
+    custom_model_data: 1006
+    durability: 3000
+    stamina_modifier: 0.25
+    tier: MYTHIC
+    special_ability: true
+    ability_description: "10% kesempatan menarik entitas mistik purba"
+    price: 85000
+    lure_level: 6
+    max_weight_capacity: 50000.0
+
+# ==============================================================================
+# Fishing Baits
+# ------------------------------------------------------------------------------
+# Economic Cost-to-Reward Balancing:
+#   - Worm:              15 coins / 5 uses = 3.0 coins/use (Early Game)
+#   - Cricket:           45 coins / 7 uses = ~6.4 coins/use (Mid Game)
+#   - Small Fish:       150 coins / 5 uses = 30.0 coins/use (Predator Target)
+#   - Rare Bait:        350 coins / 4 uses = 87.5 coins/use (Trophy Fishing)
+#   - Mythic Attractor: 900 coins / 3 uses = 300.0 coins/use (Jackpot Hunting)
+# ==============================================================================
+fishing_baits:
+  worm:
+    name: "&fCacing Tanah Segar"
+    description: "Umpan alami untuk ikan-ikan sungai kecil"
+    material: WHEAT_SEEDS
+    custom_model_data: 2001
+    valid_fish: [small_carp, small_catfish, small_tilapia, minnow, anchovy]
+    attraction_modifier: 2.0
+    tier_boost: 0
+    uses_per_item: 5
+    price: 15
+    quality_boost: 1.15
+    weight_boost: 1.10
+
+  cricket:
+    name: "&aJangkrik Rawa"
+    description: "Umpan hidup dengan getaran pemikat ikan perairan tenang"
+    material: BEETROOT_SEEDS
+    custom_model_data: 2002
+    valid_fish: [carp, catfish, tilapia, small_snakehead, mackerel, trout]
+    attraction_modifier: 2.8
+    tier_boost: 1
+    uses_per_item: 7
+    price: 45
+    quality_boost: 1.25
+    weight_boost: 1.20
+
+  small_fish:
+    name: "&9Ikan Umpan Segar"
+    description: "Ikan kecil lincah yang memicu insting predator air tawar & laut"
+    material: TROPICAL_FISH
+    custom_model_data: 2003
+    valid_fish: [snakehead, giant_catfish, salmon_king, arapaima, red_snapper]
+    attraction_modifier: 3.8
+    tier_boost: 1
+    uses_per_item: 5
+    price: 150
+    quality_boost: 1.35
+    weight_boost: 1.30
+
+  rare_bait:
+    name: "&5Feromon Pemikat Laut Dalam"
+    description: "Formula konsentrat aroma pemikat monster laut dalam"
+    material: HEART_OF_THE_SEA
+    custom_model_data: 2004
+    valid_fish: [] # Berlaku untuk seluruh spesies
+    attraction_modifier: 5.5
+    tier_boost: 2
+    uses_per_item: 4
+    price: 350
+    quality_boost: 1.50
+    weight_boost: 1.45
+
+  mythic_attractor:
+    name: "&cRelik Panggilan Abyssal"
+    description: "Esensi kristal purba yang memanggil entitas laut terdalam"
+    material: NAUTILUS_SHELL
+    custom_model_data: 2005
+    valid_fish: []
+    attraction_modifier: 7.5
+    tier_boost: 3
+    uses_per_item: 3
+    price: 900
+    quality_boost: 1.75
+    weight_boost: 1.60
+
+# ==============================================================================
+# Custom Fish Catalog
+# ------------------------------------------------------------------------------
+# Calibrated across all 6 Tiers: COMMON, UNCOMMON, RARE, EPIC, LEGENDARY, MYTHIC
+# ==============================================================================
+fishes:
+  # ----------------------------------------------------------------------------
+  # TIER: COMMON (Base Price: 2.0 - 5.0 coins | Payout: ~3 - 7 coins)
+  # ----------------------------------------------------------------------------
+  minnow:
+    name: "Ikan Cithul"
+    description: "Ikan perairan dangkal yang sangat umum di parit dan sungai kecil"
+    material: COD
+    custom_model_data: 3000
+    min_weight: 0.05
+    max_weight: 0.3
+    min_quality: 10
+    max_quality: 60
+    base_price: 2.0
+    tier: COMMON
+
+  small_carp:
+    name: "Ikan Mas Kecil"
+    description: "Ikan mas muda yang gemar mencari makan di lumpur sungai"
+    material: COD
+    custom_model_data: 3001
+    min_weight: 0.2
+    max_weight: 1.5
+    min_quality: 15
+    max_quality: 70
+    base_price: 3.0
+    tier: COMMON
+
+  small_catfish:
+    name: "Lele Kecil"
+    description: "Lele berukuran kecil dengan sungut sensitif pendeteksi mangsa"
+    material: COD
+    custom_model_data: 3002
+    min_weight: 0.3
+    max_weight: 2.0
+    min_quality: 15
+    max_quality: 75
+    base_price: 3.5
+    tier: COMMON
+
+  small_tilapia:
+    name: "Nila Kecil"
+    description: "Ikan konsumsi populer yang mudah beradaptasi di perairan air tawar"
+    material: COD
+    custom_model_data: 3003
+    min_weight: 0.2
+    max_weight: 1.2
+    min_quality: 10
+    max_quality: 70
+    base_price: 3.0
+    tier: COMMON
+
+  anchovy:
+    name: "Ikan Teri Laut"
+    description: "Ikan laut perenang kawanan pesisir pantai"
+    material: COD
+    custom_model_data: 3004
+    min_weight: 0.02
+    max_weight: 0.15
+    min_quality: 10
+    max_quality: 60
+    base_price: 2.5
+    tier: COMMON
+
+  sardine:
+    name: "Ikan Sarden"
+    description: "Ikan perak perenang cepat di lautan bebas"
+    material: COD
+    custom_model_data: 3005
+    min_weight: 0.1
+    max_weight: 0.5
+    min_quality: 15
+    max_quality: 75
+    base_price: 4.0
+    tier: COMMON
+
+  # ----------------------------------------------------------------------------
+  # TIER: UNCOMMON (Base Price: 6.0 - 15.0 coins | Payout: ~10 - 25 coins)
+  # ----------------------------------------------------------------------------
+  carp:
+    name: "Ikan Mas Dewasa"
+    description: "Ikan mas sehat dengan sisik keemasan berkilau"
+    material: SALMON
+    custom_model_data: 3101
+    min_weight: 2.0
+    max_weight: 8.0
+    min_quality: 25
+    max_quality: 85
+    base_price: 8.0
+    tier: UNCOMMON
+
+  catfish:
+    name: "Lele Dewasa"
+    description: "Lele berbobot tebal dari kolam dan muara sungai"
+    material: SALMON
+    custom_model_data: 3102
+    min_weight: 2.5
+    max_weight: 10.0
+    min_quality: 25
+    max_quality: 85
+    base_price: 9.0
+    tier: UNCOMMON
+
+  tilapia:
+    name: "Nila Hitam"
+    description: "Nila berukuran besar dengan sirip punggung tajam"
+    material: SALMON
+    custom_model_data: 3103
+    min_weight: 1.5
+    max_weight: 6.0
+    min_quality: 20
+    max_quality: 80
+    base_price: 7.5
+    tier: UNCOMMON
+
+  small_snakehead:
+    name: "Gabus Remaja"
+    description: "Predator air tawar muda yang mulai belajar menerkam umpan hidup"
+    material: SALMON
+    custom_model_data: 3104
+    min_weight: 1.0
+    max_weight: 4.0
+    min_quality: 30
+    max_quality: 85
+    base_price: 11.0
+    tier: UNCOMMON
+
+  mackerel:
+    name: "Ikan Tenggiri Muda"
+    description: "Ikan laut perenang gesit dengan tekstur daging kenyal"
+    material: SALMON
+    custom_model_data: 3105
+    min_weight: 2.0
+    max_weight: 7.0
+    min_quality: 30
+    max_quality: 90
+    base_price: 12.0
+    tier: UNCOMMON
+
+  trout:
+    name: "Ikan Trout Sungai"
+    description: "Ikan air dingin pegunungan yang sangat lincah"
+    material: SALMON
+    custom_model_data: 3106
+    min_weight: 1.5
+    max_weight: 5.0
+    min_quality: 35
+    max_quality: 90
+    base_price: 13.5
+    tier: UNCOMMON
+
+  # ----------------------------------------------------------------------------
+  # TIER: RARE (Base Price: 20.0 - 45.0 coins | Payout: ~35 - 90 coins)
+  # ----------------------------------------------------------------------------
+  snakehead:
+    name: "Ikan Gabus Liar"
+    description: "Predator tangguh berkepala ular dari rawa-rawa lebat"
+    material: SALMON
+    custom_model_data: 3107
+    min_weight: 4.0
+    max_weight: 15.0
+    min_quality: 35
+    max_quality: 95
+    base_price: 24.0
+    tier: RARE
+
+  salmon_king:
+    name: "Raja Salmon"
+    description: "Salmon jantan perkasa yang bermigrasi melawan arus deras"
+    material: SALMON
+    custom_model_data: 3108
+    min_weight: 5.0
+    max_weight: 20.0
+    min_quality: 40
+    max_quality: 95
+    base_price: 28.0
+    tier: RARE
+
+  red_snapper:
+    name: "Kakap Merah Karang"
+    description: "Penghuni terumbu karang berharga tinggi dengan tarikan kencang"
+    material: SALMON
+    custom_model_data: 3109
+    min_weight: 3.0
+    max_weight: 14.0
+    min_quality: 40
+    max_quality: 90
+    base_price: 30.0
+    tier: RARE
+
+  arapaima:
+    name: "Arapaima Amazon"
+    description: "Ikan bertubuh kokoh berlapis sisik tebal pemangsa permukaan"
+    material: SALMON
+    custom_model_data: 3401
+    min_weight: 25.0
+    max_weight: 120.0
+    min_quality: 45
+    max_quality: 95
+    base_price: 36.0
+    tier: RARE
+
+  sturgeon:
+    name: "Sturgeon Kuno"
+    description: "Ikan primitif bernilai tinggi dengan barisan pelat tulang keras"
+    material: SALMON
+    custom_model_data: 3402
+    min_weight: 30.0
+    max_weight: 150.0
+    min_quality: 50
+    max_quality: 95
+    base_price: 42.0
+    tier: RARE
+
+  yellowfin_tuna:
+    name: "Tuna Sirip Kuning"
+    description: "Torpedoa laut dengan tenaga luar biasa yang menguji tali pancing"
+    material: SALMON
+    custom_model_data: 3403
+    min_weight: 20.0
+    max_weight: 80.0
+    min_quality: 45
+    max_quality: 95
+    base_price: 38.0
+    tier: RARE
+
+  # ----------------------------------------------------------------------------
+  # TIER: EPIC (Base Price: 50.0 - 100.0 coins | Payout: ~120 - 280 coins)
+  # ----------------------------------------------------------------------------
+  giant_catfish:
+    name: "Lele Raksasa Mekong"
+    description: "Salah satu ikan air tawar terberat di dunia dengan daya tahan tinggi"
+    material: PUFFERFISH
+    custom_model_data: 3201
+    min_weight: 60.0
+    max_weight: 300.0
+    min_quality: 55
+    max_quality: 100
+    base_price: 65.0
+    tier: EPIC
+
+  barracuda:
+    name: "Barracuda Samudra"
+    description: "Predator bergigi jarum yang menyambar umpan dalam sekejap mata"
+    material: PUFFERFISH
+    custom_model_data: 3202
+    min_weight: 15.0
+    max_weight: 60.0
+    min_quality: 60
+    max_quality: 100
+    base_price: 75.0
+    tier: EPIC
+
+  dunkleosteus:
+    name: "Dunkleosteus Fosil"
+    description: "Ikan berzirah pelat baja prasejarah pematah tulang"
+    material: PUFFERFISH
+    custom_model_data: 3302
+    min_weight: 100.0
+    max_weight: 600.0
+    min_quality: 60
+    max_quality: 100
+    base_price: 90.0
+    tier: EPIC
+
+  helicoprion:
+    name: "Helicoprion Purba"
+    description: "Hiu purba dengan susunan rahang spiral sirkular bergerigi"
+    material: PUFFERFISH
+    custom_model_data: 3304
+    min_weight: 80.0
+    max_weight: 450.0
+    min_quality: 55
+    max_quality: 95
+    base_price: 80.0
+    tier: EPIC
+
+  xiphactinus:
+    name: "Xiphactinus"
+    description: "Ikan karnivora buas periode Cretaceous pemangsa utuh lawannya"
+    material: SALMON
+    custom_model_data: 3305
+    min_weight: 50.0
+    max_weight: 250.0
+    min_quality: 55
+    max_quality: 95
+    base_price: 70.0
+    tier: EPIC
+
+  crystal_fish:
+    name: "Ikan Kristal Transparan"
+    description: "Ikan langka bertubuh tembus pandang membiaskan cahaya danau"
+    material: TROPICAL_FISH
+    custom_model_data: 4004
+    min_weight: 2.0
+    max_weight: 12.0
+    min_quality: 75
+    max_quality: 100
+    base_price: 85.0
+    tier: EPIC
+
+  # ----------------------------------------------------------------------------
+  # TIER: LEGENDARY (Base Price: 120.0 - 250.0 coins | Payout: ~350 - 850 coins)
+  # ----------------------------------------------------------------------------
+  giant_whale_shark:
+    name: "Hiu Paus Raksasa"
+    description: "Raksasa samudra berhati lembut penyaring plankton perairan hangat"
+    material: PUFFERFISH
+    custom_model_data: 3203
+    min_weight: 800.0
+    max_weight: 4500.0
+    min_quality: 70
+    max_quality: 100
+    base_price: 150.0
+    tier: LEGENDARY
+
+  megalodon:
+    name: "Megalodon Purba"
+    description: "Penguasa puncak lautan prasejarah berahang penghancur karang"
+    material: PUFFERFISH
+    custom_model_data: 3301
+    min_weight: 1500.0
+    max_weight: 7500.0
+    min_quality: 75
+    max_quality: 100
+    base_price: 220.0
+    tier: LEGENDARY
+
+  leedsichthys:
+    name: "Leedsichthys Raksasa"
+    description: "Ikan bertulang terpanjang dalam sejarah bumi sepanjang kapal layar"
+    material: PUFFERFISH
+    custom_model_data: 3303
+    min_weight: 1200.0
+    max_weight: 6000.0
+    min_quality: 70
+    max_quality: 100
+    base_price: 180.0
+    tier: LEGENDARY
+
+  golden_koi:
+    name: "Koi Emas Kaisar"
+    description: "Koi bertuah pembawa kemakmuran legendaris bagi pemancing beruntung"
+    material: TROPICAL_FISH
+    custom_model_data: 4001
+    min_weight: 3.0
+    max_weight: 18.0
+    min_quality: 85
+    max_quality: 100
+    base_price: 200.0
+    tier: LEGENDARY
+
+  rainbow_salmon:
+    name: "Salmon Pelangi Surya"
+    description: "Salmon bercahaya prisma tujuh warna dari mata air pegunungan suci"
+    material: SALMON
+    custom_model_data: 4002
+    min_weight: 5.0
+    max_weight: 25.0
+    min_quality: 85
+    max_quality: 100
+    base_price: 175.0
+    tier: LEGENDARY
+
+  ancient_guardian:
+    name: "Penjaga Karang Purba"
+    description: "Spesimen tertua laut dalam saksi bisu ribuan tahun sejarah samudra"
+    material: PUFFERFISH
+    custom_model_data: 4003
+    min_weight: 400.0
+    max_weight: 2000.0
+    min_quality: 85
+    max_quality: 100
+    base_price: 240.0
+    tier: LEGENDARY
+
+  abyssal_horror:
+    name: "Horor Palung Abisal"
+    description: "Makhluk laut dalam berparas menakutkan dengan organ bioluminesensi"
+    material: PUFFERFISH
+    custom_model_data: 4005
+    min_weight: 250.0
+    max_weight: 1200.0
+    min_quality: 80
+    max_quality: 100
+    base_price: 190.0
+    tier: LEGENDARY
+
+  # ----------------------------------------------------------------------------
+  # TIER: MYTHIC (Base Price: 350.0 - 600.0 coins | Payout: ~1,200 - 2,800 coins)
+  # ----------------------------------------------------------------------------
+  samudera_mythic:
+    name: "Naga Samudra Purba"
+    description: "Entitas mistik penjaga palung laut terdalam dengan aura kosmik samudra"
+    material: PUFFERFISH
+    custom_model_data: 4009
+    min_weight: 2000.0
+    max_weight: 10000.0
+    min_quality: 90
+    max_quality: 100
+    base_price: 550.0
+    tier: MYTHIC
+
+  void_serpent:
+    name: "Ular Bintang Kedalaman"
+    description: "Makhluk ethereal mistik yang meluncur di antara batas realitas air dan kehampaan"
+    material: PUFFERFISH
+    custom_model_data: 4010
+    min_weight: 1500.0
+    max_weight: 8000.0
+    min_quality: 92
+    max_quality: 100
+    base_price: 500.0
+    tier: MYTHIC
+
+# ==============================================================================
+# Special Fishing Locations
+# ------------------------------------------------------------------------------
+# Notes:
+#   - Set 'world' to your server's fishing world (e.g. world, world_nether, etc.)
+#   - In NusaFishing, Multi-World isolation checks 'world' matching.
+#   - fish_multiplier increases catch frequency in the area.
+#   - rare_fish_chance adds extra weight toward special_fish catches.
+# ==============================================================================
+special_locations:
+  ancient_lake:
+    world: "world"
+    center_x: 100.0
+    center_z: 200.0
+    radius: 60.0
+    name: "Danau Suci Kuno"
+    description: "Danau pegunungan bening tempat bersemayamnya ikan langka berharga"
+    fish_multiplier: 1.3
+    rare_fish_chance: 0.15
+    special_fish:
+      - crystal_fish
+      - golden_koi
+      - rainbow_salmon
+
+  deep_sea_abyss:
+    world: "world"
+    center_x: -600.0
+    center_z: 450.0
+    radius: 120.0
+    name: "Palung Abisal Karang Gelap"
+    description: "Zona laut dalam bertekanan ekstrem sarang predator legendaris dan mistik"
+    fish_multiplier: 1.5
+    rare_fish_chance: 0.25
+    special_fish:
+      - abyssal_horror
+      - ancient_guardian
+      - samudera_mythic
+      - void_serpent
