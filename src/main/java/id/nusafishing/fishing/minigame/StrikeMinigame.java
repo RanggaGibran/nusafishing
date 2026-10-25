@@ -217,6 +217,9 @@ public class StrikeMinigame {
             // Add fishing XP based on fish quality and weight
             int xpGain = (int)(5 + (fish.getWeight() * fish.getQuality() / 20));
             plugin.getSkillManager().addFishingExp(player, xpGain);
+
+            // Add AuraSkills XP if enabled
+            plugin.getAuraSkillsHook().addFishingXp(player, fish);
             
             // Reduce durability on successful catch
             FishingRod customRod = null;

@@ -20,20 +20,30 @@ public class StaminaManager {
     private final Map<UUID, Double> playerStamina;
     private BukkitTask globalRegenTask;
     
-    private static final double MAX_STAMINA = 100.0;
-    private static final double REGEN_AMOUNT = 1.0;
-    private static final long REGEN_DELAY = 20L; // 1 second in ticks
+    private double maxStamina = 100.0;
+    private double regenAmount = 1.5;
+    private long regenDelay = 20L;
     
     public StaminaManager(NusaFishing plugin) {
         this.plugin = plugin;
         this.playerStamina = new HashMap<>();
+        loadConfig();
+        startGlobalRegeneration();
+    }
+
+    public void loadConfig() {
+        if (plugin.getConfig() != null) {
+            this.maxStamina = plugin.getConfig().getDouble("player.max_stamina", 100.0);
+            this.regenAmount = plugin.getConfig().getDouble("player.stamina_regen", 1.5);
+            this.regenDelay = Math.max(1L, plugin.getConfig().getLong("player.stamina_regen_delay", 20L));
+        }
         startGlobalRegeneration();
     }
     
     public void initializePlayer(Player player) {
         UUID playerId = player.getUniqueId();
-        // Preserve stamina across reconnects, default to MAX_STAMINA for new players
-        playerStamina.putIfAbsent(playerId, MAX_STAMINA);
+        // Preserve stamina across reconnects, default to maxStamina for new players
+        playerStamina.putIfAbsent(playerId, maxStamina);
     }
     
     public void removePlayer(Player player) {
@@ -60,7 +70,7 @@ public class StaminaManager {
             staminaCost *= rod.getStaminaModifier();
         }
         
-        double currentStamina = playerStamina.getOrDefault(playerId, MAX_STAMINA);
+        double currentStamina = playerStamina.getOrDefault(playerId, maxStamina);
         double newStamina = Math.max(0, currentStamina - staminaCost);
         
         playerStamina.put(playerId, newStamina);
@@ -79,14 +89,14 @@ public class StaminaManager {
     
     public void restoreStamina(Player player, double amount) {
         UUID playerId = player.getUniqueId();
-        double currentStamina = playerStamina.getOrDefault(playerId, MAX_STAMINA);
-        double newStamina = Math.min(MAX_STAMINA, currentStamina + amount);
+        double currentStamina = playerStamina.getOrDefault(playerId, maxStamina);
+        double newStamina = Math.min(maxStamina, currentStamina + amount);
         
         playerStamina.put(playerId, newStamina);
     }
     
     public double getStamina(Player player) {
-        return playerStamina.getOrDefault(player.getUniqueId(), MAX_STAMINA);
+        return playerStamina.getOrDefault(player.getUniqueId(), maxStamina);
     }
     
     private void sendActionBar(Player player, String message) {
@@ -103,10 +113,10 @@ public class StaminaManager {
             public void run() {
                 for (Player player : Bukkit.getOnlinePlayers()) {
                     UUID playerId = player.getUniqueId();
-                    double stamina = playerStamina.getOrDefault(playerId, MAX_STAMINA);
-                    if (stamina < MAX_STAMINA) {
-                        restoreStamina(player, REGEN_AMOUNT);
-                        double clampedStamina = Math.min(MAX_STAMINA, stamina + REGEN_AMOUNT);
+                    double stamina = playerStamina.getOrDefault(playerId, maxStamina);
+                    if (stamina < maxStamina) {
+                        restoreStamina(player, regenAmount);
+                        double clampedStamina = Math.min(maxStamina, stamina + regenAmount);
                         
                         // Show recovery message if stamina is still low
                         if (clampedStamina < 20) {
@@ -115,7 +125,7 @@ public class StaminaManager {
                     }
                 }
             }
-        }.runTaskTimer(plugin, REGEN_DELAY, REGEN_DELAY);
+        }.runTaskTimer(plugin, regenDelay, regenDelay);
     }
     
     /**

@@ -1,8 +1,11 @@
 name: nusafishing
 main: id.nusafishing.NusaFishing
-version: 1.2+dev+02b8ebb
+version: ${version}
+website: https://github.com/RanggaGibran/nusafishing
+author: "RanggaGibran"
+contributors: ["Asano Saryu"]
 api-version: '1.21'
-softdepend: [Vault, PlaceholderAPI, Nexo, Oraxen, ItemsAdder]
+softdepend: [Vault, PlaceholderAPI, Nexo, Oraxen, ItemsAdder, AuraSkills]
 
 commands:
   nusafishing:
@@ -17,6 +20,9 @@ permissions:
   nusafishing.bait:
     description: Izin untuk mendapatkan umpan custom
     default: op
+  nusafishing.afk:
+    description: Izin untuk menggunakan mode auto-fishing (/nf afk)
+    default: true
   nusafishing.admin:
     description: Izin admin untuk semua perintah
     default: op
@@ -27,6 +33,7 @@ permissions:
       nusafishing.repair: true
       nusafishing.sell: true
       nusafishing.shop: true
+      nusafishing.afk: true
   nusafishing.admin.reload:
     description: Izin untuk memuat ulang konfigurasi
     default: op

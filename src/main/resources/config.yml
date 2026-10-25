@@ -1,4 +1,31 @@
 # NusaFishing Main Configuration
+config_version: "1.3+SNAPSHOT"
+
+# AuraSkills Integration
+# Wiki: https://wiki.aurelium.dev/auraskills/api
+auraskills:
+  # Mengaktifkan/menonaktifkan pemberian skill XP AuraSkills saat memancing
+  enabled: true
+  # Base XP memancing per tangkapan
+  base_xp: 15.0
+  # Multiplier XP berdasarkan tier ikan
+  tier_xp_multipliers:
+    COMMON: 1.0
+    UNCOMMON: 1.5
+    RARE: 2.5
+    EPIC: 4.0
+    LEGENDARY: 7.0
+    MYTHIC: 12.0
+
+# Auto-Fishing / AFK Fishing Settings (/nf afk)
+# Format luck-nerf dan speed-nerf menggunakan format <angka>%
+afk_fishing:
+  # Mengaktifkan/menonaktifkan fitur /nf afk
+  enabled: true
+  # Nerf keberuntungan (mengurangi peluang ikan tier tinggi & bobot)
+  luck-nerf: 20%
+  # Nerf kecepatan (memperlambat waktu tunggu & waktu tarikan)
+  speed-nerf: 30%
 
 # Tier color customization (Supports Minecraft color codes e.g. &7, &a, &c, etc.)
 tier_colors:

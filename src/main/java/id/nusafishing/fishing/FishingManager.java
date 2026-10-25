@@ -368,6 +368,10 @@ public class FishingManager {
      * @return A randomly selected fish
      */
     public CustomFish selectRandomFish(Player player, FishingRod rod, FishingBait activeBait) {
+        return selectRandomFish(player, rod, activeBait, 0.0);
+    }
+
+    public CustomFish selectRandomFish(Player player, FishingRod rod, FishingBait activeBait, double luckNerf) {
         // Resolve active bait if not explicitly passed
         if (activeBait == null) {
             ItemStack offHandItem = player.getInventory().getItemInOffHand();
@@ -381,10 +385,12 @@ public class FishingManager {
             }
         }
 
-        // Check for event fish first (highest priority)
-        CustomFish eventFish = checkForEventFish(player, player.getLocation(), activeBait);
-        if (eventFish != null) {
-            return eventFish;
+        // Check for event fish first (highest priority) - reduced chance under luck nerf
+        if (luckNerf <= 0 || random.nextDouble() >= luckNerf) {
+            CustomFish eventFish = checkForEventFish(player, player.getLocation(), activeBait);
+            if (eventFish != null) {
+                return eventFish;
+            }
         }
         
         // Get location and environment information
@@ -413,6 +419,13 @@ public class FishingManager {
             weightBoost *= activeBait.getWeightBoost();
         }
 
+        // Apply luck nerf to tier, quality, and weight boosts
+        if (luckNerf > 0.0) {
+            totalTierBoost = (int) Math.round(totalTierBoost * (1.0 - luckNerf));
+            qualityBoost = Math.max(0.5, qualityBoost * (1.0 - (luckNerf * 0.5)));
+            weightBoost = Math.max(0.5, weightBoost * (1.0 - (luckNerf * 0.5)));
+        }
+
         // Add the missing section to populate availableFish
         List<CustomFish> availableFish = new ArrayList<>();
         List<Double> fishWeights = new ArrayList<>();
@@ -435,6 +448,17 @@ public class FishingManager {
             
             // Calculate weight based on various factors
             double weight = calculateFishWeight(fish, activeBait, specialLocation, timeOfDay);
+            
+            // Apply luck nerf to higher-tier fish weights
+            if (luckNerf > 0.0 && weight > 0) {
+                switch (fish.getBaseTier()) {
+                    case MYTHIC -> weight *= Math.max(0.05, 1.0 - (luckNerf * 1.5));
+                    case LEGENDARY -> weight *= Math.max(0.10, 1.0 - (luckNerf * 1.25));
+                    case EPIC -> weight *= Math.max(0.20, 1.0 - luckNerf);
+                    case RARE -> weight *= Math.max(0.35, 1.0 - (luckNerf * 0.75));
+                    default -> {}
+                }
+            }
             
             // If weight > 0, fish can be caught in current conditions
             if (weight > 0) {

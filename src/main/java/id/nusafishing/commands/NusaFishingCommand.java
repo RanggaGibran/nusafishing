@@ -78,6 +78,7 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage("§f/nusafishing bait <id> [jumlah] - Dapatkan umpan");
                 sender.sendMessage("§f/nusafishing repair - Perbaiki pancingan di tangan");
                 sender.sendMessage("§f/nusafishing shop - Buka toko untuk beli dan jual");
+                sender.sendMessage("§f/nusafishing afk - Aktifkan/nonaktifkan mode auto-fishing");
                 
                 if (sender.hasPermission("nusafishing.sell")) {
                     sender.sendMessage("§f/nusafishing sell - Jual ikan di tangan");
@@ -411,6 +412,21 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
                 
                 return true;
                 
+            case "afk":
+                if (!(sender instanceof Player)) {
+                    sender.sendMessage("§cCommand ini hanya dapat digunakan oleh player!");
+                    return true;
+                }
+                
+                if (!sender.hasPermission("nusafishing.afk")) {
+                    sender.sendMessage("§cKamu tidak memiliki izin untuk menggunakan perintah ini!");
+                    return true;
+                }
+
+                Player afkPlayer = (Player) sender;
+                plugin.getAfkFishingManager().toggleAfk(afkPlayer);
+                return true;
+
             case "collector":
             case "kolektor":
                 // Check permissions
@@ -915,7 +931,7 @@ public class NusaFishingCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             // Main subcommands
             List<String> subCommands = new ArrayList<>(Arrays.asList("help", "rod", "bait", "repair",
-                    "location", "event", "collector", "sell", "shop", "tournament"));
+                    "location", "event", "collector", "sell", "shop", "tournament", "afk"));
             if (sender.hasPermission("nusafishing.collector")) {
                 subCommands.add("collector");
             }

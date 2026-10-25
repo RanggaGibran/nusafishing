@@ -453,6 +453,9 @@ public class TournamentManager {
             // Tambahkan exp (hanya jika online)
             if (exp > 0 && player != null) {
                 plugin.getSkillManager().addFishingExp(player, exp);
+                if (plugin.getAuraSkillsHook() != null) {
+                    plugin.getAuraSkillsHook().addXp(player, exp);
+                }
             }
             
             // Jalankan perintah khusus

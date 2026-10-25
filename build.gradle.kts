@@ -3,7 +3,19 @@ plugins {
 }
 
 group = "id.nusafishing"
-version = "1.2+dev+02b8ebb"
+
+fun getGitCommitHash(): String {
+    return try {
+        val process = ProcessBuilder("git", "rev-parse", "--short", "HEAD").start()
+        val hash = process.inputStream.bufferedReader().readText().trim()
+        if (hash.isNotEmpty()) hash else "dev"
+    } catch (e: Exception) {
+        "dev"
+    }
+}
+
+val gitCommit = getGitCommitHash()
+version = "1.3+SNAPSHOT+$gitCommit"
 
 repositories {
     mavenCentral()
@@ -37,6 +49,7 @@ dependencies {
     compileOnly("beer.devs:itemsadder-api:4.0.17") {
         isTransitive = false
     }
+    compileOnly("dev.aurelium:auraskills-api-bukkit:2.2.4")
 
     // Java 25 source set dependencies (Paper 26.2+ baseline)
     "java25CompileOnly"("io.papermc.paper:paper-api:26.2.build.134-stable")
@@ -86,6 +99,7 @@ tasks.test {
 }
 
 tasks.processResources {
+    inputs.property("version", project.version)
     filteringCharset = "UTF-8"
     filesMatching("plugin.yml") {
         expand(
