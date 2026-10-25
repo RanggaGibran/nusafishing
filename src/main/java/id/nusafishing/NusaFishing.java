@@ -21,6 +21,8 @@ import id.nusafishing.fishing.data.FishingStatisticsManager;
 import id.nusafishing.tournament.TournamentManager;
 import id.nusafishing.managers.RewardsManager;
 import id.nusafishing.integration.item.ItemProviderManager;
+import id.nusafishing.integration.auraskills.AuraSkillsHook;
+import id.nusafishing.fishing.afk.AfkFishingManager;
 
 public class NusaFishing extends JavaPlugin {
     private static final Logger LOGGER = Logger.getLogger("nusafishing");
@@ -28,6 +30,8 @@ public class NusaFishing extends JavaPlugin {
     private static NusaFishing instance;
     
     private ItemProviderManager itemProviderManager;
+    private AuraSkillsHook auraSkillsHook;
+    private AfkFishingManager afkFishingManager;
     private ConfigManager configManager;
     private StaminaManager staminaManager;
     private PlayerSkillManager skillManager;
@@ -78,6 +82,13 @@ public class NusaFishing extends JavaPlugin {
         // Initialize rewards manager
         this.rewardsManager = new RewardsManager(this);
         
+        // Initialize AuraSkills integration
+        this.auraSkillsHook = new AuraSkillsHook(this);
+
+        // Initialize AFK fishing manager and register its listener
+        this.afkFishingManager = new AfkFishingManager(this);
+        getServer().getPluginManager().registerEvents(afkFishingManager, this);
+
         // Register listeners
         FishingListener fishingListener = new FishingListener(this, fishingManager, staminaManager, skillManager);
         getServer().getPluginManager().registerEvents(fishingListener, this);
@@ -139,6 +150,11 @@ public class NusaFishing extends JavaPlugin {
         if (tournamentManager != null) {
             tournamentManager.shutdown();
         }
+
+        // Cleanup AFK fishing manager
+        if (afkFishingManager != null) {
+            afkFishingManager.cleanup();
+        }
         
         LOGGER.info("NusaFishing disabled");
     }
@@ -188,6 +204,14 @@ public class NusaFishing extends JavaPlugin {
     public RewardsManager getRewardsManager() {
         return rewardsManager;
     }
+
+    public AuraSkillsHook getAuraSkillsHook() {
+        return auraSkillsHook;
+    }
+
+    public AfkFishingManager getAfkFishingManager() {
+        return afkFishingManager;
+    }
     
     public void reloadAllConfigurations() {
         // Reload main config
@@ -198,6 +222,11 @@ public class NusaFishing extends JavaPlugin {
         
         // Reload event fish from config
         ConfigEventFish.loadFromConfig(this);
+
+        // Recheck AuraSkills availability
+        if (auraSkillsHook != null) {
+            auraSkillsHook.checkAvailability();
+        }
         
         // Reload dependent systems
         fishingManager.reloadConfig();

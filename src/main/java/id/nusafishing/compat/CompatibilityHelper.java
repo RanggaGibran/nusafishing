@@ -38,4 +38,16 @@ public final class CompatibilityHelper {
             return null;
         }
     }
+
+    public static void sendActionBar(org.bukkit.entity.Player player, String message) {
+        if (player == null || message == null) return;
+        try {
+            player.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR, 
+                net.md_5.bungee.api.chat.TextComponent.fromLegacyText(message));
+        } catch (Throwable t1) {
+            try {
+                player.sendTitle("", message, 0, 40, 10);
+            } catch (Throwable ignored) {}
+        }
+    }
 }

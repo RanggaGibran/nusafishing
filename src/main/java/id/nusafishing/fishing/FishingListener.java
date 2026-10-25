@@ -54,10 +54,10 @@ public class FishingListener implements Listener {
     private static final String ROD_DURABILITY_KEY = "nusafishing.durability";
     
     // Constants for fishing
-    private static final int MIN_CAST_COOLDOWN_MS = 2000; // 2 seconds between casts
-    private static final double CAST_STAMINA_COST = 10.0;
-    private static final int DURABILITY_LOSS_ON_CAST = 1; // Durability loss when casting
-    private static final int DURABILITY_LOSS_ON_CATCH = 2; // Durability loss when catching a fish
+    public static final int MIN_CAST_COOLDOWN_MS = 2000; // 2 seconds between casts
+    public static final double CAST_STAMINA_COST = 10.0;
+    public static final int DURABILITY_LOSS_ON_CAST = 1; // Durability loss when casting
+    public static final int DURABILITY_LOSS_ON_CATCH = 2; // Durability loss when catching a fish
 
     public FishingListener(NusaFishing plugin, FishingManager fishingManager,
                          StaminaManager staminaManager, PlayerSkillManager skillManager) {
@@ -170,6 +170,9 @@ public class FishingListener implements Listener {
                     int xpGain = (int)(5 + (fish.getWeight() * fish.getQuality() / 20));
                     plugin.getSkillManager().addFishingExp(player, xpGain);
 
+                    // Add AuraSkills XP if enabled
+                    plugin.getAuraSkillsHook().addFishingXp(player, fish);
+
                     // Consume stamina based on fish weight
                     staminaManager.consumeStaminaForFish(player, fish, null);
 
@@ -242,6 +245,11 @@ public class FishingListener implements Listener {
             if (hook != null && totalLure > 0) {
                 int minWait = Math.max(20, 100 - (totalLure * 15));
                 int maxWait = Math.max(minWait + 20, 600 - (totalLure * 60));
+                if (plugin.getAfkFishingManager().isAfk(player)) {
+                    double speedNerf = plugin.getAfkFishingManager().getSpeedNerf();
+                    minWait = (int) Math.round(minWait * (1.0 + speedNerf));
+                    maxWait = (int) Math.round(maxWait * (1.0 + speedNerf));
+                }
                 try {
                     hook.setWaitTime(minWait, maxWait);
                 } catch (Throwable t1) {
@@ -340,6 +348,19 @@ public class FishingListener implements Listener {
             }
         }
         
+        // Check if player is in AFK auto-fishing mode
+        if (plugin.getAfkFishingManager().isAfk(player)) {
+            double luckNerf = plugin.getAfkFishingManager().getLuckNerf();
+            CustomFish fish = fishingManager.selectRandomFish(player, customRod, bait, luckNerf);
+            if (fish == null) {
+                player.sendMessage("§c§oTidak bisa menemukan ikan yang cocok untuk ditangkap.");
+                return;
+            }
+            removePlayerFishingHook(player);
+            plugin.getAfkFishingManager().handleAfkBite(player, fish, fishingRod, customRod);
+            return;
+        }
+
         // Select a random fish based on player's location, rod, and active bait
         CustomFish fish = fishingManager.selectRandomFish(player, customRod, bait);
         

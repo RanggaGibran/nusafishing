@@ -4,7 +4,7 @@
 
 ![Java](https://img.shields.io/badge/Java-21%20%7C%2025%20(MR--JAR)-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
 ![Paper](https://img.shields.io/badge/Platform-Paper%20%2F%20Purpur%201.21.x+-1E88E5?style=for-the-badge&logo=minecraft&logoColor=white)
-![Release](https://img.shields.io/badge/Release-v1.2%2Bdev%2B02b8ebb-00C853?style=for-the-badge)
+![Release](https://img.shields.io/badge/Release-v1.3%2BSNAPSHOT-00C853?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-GNU%20GPL%20v2-blue?style=for-the-badge)
 
 **An enterprise-grade, RPG-styled fishing system engineered for modern Spigot, Paper, and Purpur Minecraft servers.**
@@ -24,6 +24,9 @@
 ## ✨ Features
 
 - 🎨 **Pluggable Custom Texture Providers**: Native integration with **Nexo**, **Oraxen**, and **ItemsAdder** with automatic, zero-crash fallback to vanilla materials and custom model data.
+- ⚡ **AuraSkills Integration**: Seamless connection to [AuraSkills](https://wiki.aurelium.dev/auraskills/api) awarding fishing skill experience on custom and vanilla catches, togglable and balanced per tier in `config.yml`.
+- 🤖 **Balanced AFK Auto-Fishing (`/nf afk`)**: Built-in automated fishing with configurable `luck-nerf: <angka>%` and `speed-nerf: <angka>%`, complete with anti-exploit distance and stamina checks.
+- 🔄 **Self-Updating Configuration Engine**: Automatically detects plugin updates, synchronizes config versions, and provisions missing configuration sections with defaults without wiping user settings.
 - ☕ **Java Multi-Release Architecture (MR-JAR)**: Single universal binary (`nusafishing-<version>.jar`) compiling to Java 21 baseline for 1.21.x and Java 25 bytecode for Paper 26.2+.
 - 🐟 **Procedural Catches**: Caught fish feature procedural weights (from grams to tons), quality ratings (1–100), and dynamic tier elevations.
 - 🎣 **Strike Minigame**: Interactive left-click mini-game upon fish bites with real-time title progress bars and stamina consumption.
@@ -232,6 +235,34 @@ Fish weights scale dynamically:
 - **Price Recovery**: An automatic 15-minute background task slowly restores prices as market saturation clears.
 - **Rod Repair**: Players can repair damaged custom rods using `/nf repair`, with costs calculated dynamically based on lost durability and rod tier.
 
+### 5. AuraSkills Integration
+NusaFishing connects natively with [AuraSkills](https://wiki.aurelium.dev/auraskills/api) to reward players with fishing skill experience:
+```yaml
+auraskills:
+  enabled: true
+  base_xp: 15.0
+  tier_xp_multipliers:
+    COMMON: 1.0
+    UNCOMMON: 1.5
+    RARE: 2.5
+    EPIC: 4.0
+    LEGENDARY: 7.0
+    MYTHIC: 12.0
+```
+
+### 6. AFK Auto-Fishing System (`/nf afk`)
+Players can toggle automated fishing with `/nf afk`. To preserve economic equilibrium and avoid unfair advantages:
+- **`luck-nerf: <angka>%`**: Reduces higher-tier fish roll weights and diminishes quality/weight boosts.
+- **`speed-nerf: <angka>%`**: Extends both the bite wait time and the automated reel-in duration.
+- **Safety Measures**: Auto-fishing immediately halts if the player runs out of stamina, breaks their rod, or moves more than 5 blocks from their initial cast location.
+
+```yaml
+afk_fishing:
+  enabled: true
+  luck-nerf: 20%
+  speed-nerf: 30%
+```
+
 ---
 
 ## 📋 Commands & Permissions
@@ -241,6 +272,7 @@ Fish weights scale dynamically:
 | Command | Description | Permission | Default |
 |---|---|---|---|
 | `/nf help` | Shows the command guide | None | Everyone |
+| `/nf afk` | Toggles AFK auto-fishing mode with configured nerfs | `nusafishing.afk` | `true` |
 | `/nf shop` | Opens the graphical Rod, Bait, & Fish Market | `nusafishing.shop` | `true` |
 | `/nf sell` | Sells the fish held in main hand | `nusafishing.sell` | `true` |
 | `/nf sell all` | Sells all fish in inventory storage | `nusafishing.sell` | `true` |
@@ -297,17 +329,17 @@ cd nusafishing
 
 The compiled multi-release artifact will be generated in:
 ```
-build/libs/nusafishing-1.2+dev+02b8ebb.jar
+build/libs/nusafishing-1.3+SNAPSHOT+<commit>.jar
 ```
 
 ### Verifying Multi-Release Bytecode
 
 ```bash
 # Verify base bytecode class version (major 65 = Java 21)
-javap -verbose -cp build/libs/nusafishing-1.2+dev+02b8ebb.jar id.nusafishing.NusaFishing | grep "major version"
+javap -verbose -cp build/libs/nusafishing-*.jar id.nusafishing.NusaFishing | grep "major version"
 
 # Verify version 25 bytecode (major 69 = Java 25)
-unzip -p build/libs/nusafishing-1.2+dev+02b8ebb.jar META-INF/versions/25/id/nusafishing/compat/PlatformHelper.class > /tmp/PlatformHelper25.class
+unzip -p build/libs/nusafishing-*.jar META-INF/versions/25/id/nusafishing/compat/PlatformHelper.class > /tmp/PlatformHelper25.class
 javap -verbose /tmp/PlatformHelper25.class | grep "major version"
 ```
 
